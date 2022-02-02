@@ -2,6 +2,11 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+:root {
+  background: #222;
+  color: white;
+}
+
 /* This file is for your main application CSS */
 
 /* Alerts and form errors used by phx.new */
