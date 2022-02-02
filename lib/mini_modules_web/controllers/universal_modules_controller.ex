@@ -47,7 +47,7 @@ defmodule MiniModulesWeb.UniversalModulesController do
       source: source,
       decoded: inspect(decoded),
       identifiers: inspect(identifiers, pretty: true),
-      json: Jason.encode!(json, pretty: true),
+      json: Jason.encode!(json, pretty: true)
     )
   end
 end
