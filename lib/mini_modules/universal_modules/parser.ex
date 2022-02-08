@@ -223,6 +223,16 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode({identifier, :expect_expression, expression}, ""),
       do: {:ok, {:const, identifier, expression}, ""}
 
+    defp decode({identifier, :expect_expression, []}, <<"yield ", input::bitstring>>) do
+      case MiniModules.UniversalModules.Parser.compose(Expression, input) do
+        {:ok, term, rest} ->
+          {:ok, {:const, identifier, {:yield, term}}, rest}
+
+        {:error, error} ->
+          {:error, {:invalid_expression, error}}
+      end
+    end
+
     defp decode({identifier, :expect_expression, []}, input) do
       case MiniModules.UniversalModules.Parser.compose(Expression, input) do
         {:ok, expression, rest} ->
@@ -332,7 +342,7 @@ defmodule MiniModules.UniversalModules.Parser do
     # so instead it must be encoded as "\n". So we can use this fast to know an actual newline is
     # outside the JSON value.
     # defp decode([], <<"{", rest::bitstring>>), do: decode([nil], rest)
-    defp decode([], <<char::utf8, _::bitstring>> = input) when char in [?[, ?{, ?"] do
+    defp decode([], <<char::utf8, _::bitstring>> = input) when char in [?[, ?{] do
       [encoded_json, rest] = String.split(input, ";\n", parts: 2)
 
       case Jason.decode(encoded_json) do
@@ -374,6 +384,17 @@ defmodule MiniModules.UniversalModules.Parser do
          )
          when is_lower(char) or is_upper(char) or is_digit(char) do
       decode([{:found_identifier, [char | reverse_identifier]} | context_rest], rest)
+    end
+
+    @regex_regex ~r/^(?<REGEX>(?>\/(?>\\(?>[\/\\\/bfnrt]|u[a-fA-F0-9]{4})|[^\/\\\0-\x1F\x7F]+)*\/))/
+
+    defp decode([], <<?/, _::bitstring>> = input) do
+      ["", regex_source, rest] =
+        Regex.split(@regex_regex, input, parts: 2, include_captures: true)
+
+      regex_source = String.trim(regex_source, "/")
+
+      {:ok, {:regex, regex_source}, rest}
     end
   end
 
