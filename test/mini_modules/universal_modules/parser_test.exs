@@ -28,6 +28,12 @@ defmodule MiniModules.ParserTest do
              """) == {:ok, [{:const, "a", "abc"}]}
     end
 
+    test "const string with punctuations" do
+      assert Parser.decode("""
+             const a = "abc ' \\" ; ";
+             """) == {:ok, [{:const, "a", "abc ' \" ; "}]}
+    end
+
     test "const referring earlier const" do
       assert Parser.decode("""
              const a = "abc";
@@ -98,6 +104,14 @@ defmodule MiniModules.ParserTest do
       assert Parser.decode("""
              const root = new URL("https://example.org");
              """) == {:ok, [{:const, "root", {:url, "https://example.org"}}]}
+    end
+
+    test "new URL with base" do
+      assert Parser.decode("""
+             const aboutLink = new URL("/about", "https://example.org");
+             """) ==
+               {:ok,
+                [{:const, "aboutLink", {:url, [relative: "/about", base: "https://example.org"]}}]}
     end
 
     test "new Set" do

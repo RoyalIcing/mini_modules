@@ -4,10 +4,16 @@ defmodule MiniModules.UniversalModules.JSONEncoder do
        do: [{name, value}]
 
   defp encode({:export, {:const, name, {:set, members}}}),
-    do: [{name, MapSet.to_list(MapSet.new(members))}] # TODO: preserve order
+    # TODO: preserve order
+    do: [{name, MapSet.to_list(MapSet.new(members))}]
 
-  defp encode({:export, {:const, name, {:url, href}}}),
+  defp encode({:export, {:const, name, {:url, href}}}) when is_binary(href),
     do: [{name, href}]
+
+  defp encode({:export, {:const, name, {:url, [relative: relative, base: base]}}}) do
+    url = URI.merge(URI.parse(base), relative)
+    [{name, to_string(url)}]
+  end
 
   defp encode(_), do: []
 

@@ -200,6 +200,7 @@ defmodule MiniModules.UniversalModules.Parser do
   end
 
   defmodule CommaSeparatedList do
+    # def decode(input), do: decode([], input)
   end
 
   defmodule Expression do
@@ -217,14 +218,18 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode(expression, <<";", rest::bitstring>>),
       do: {:ok, finalize(expression), rest}
 
+    # Skip leading whitespace
     defp decode([] = context, <<" ", rest::bitstring>>), do: decode(context, rest)
+
     defp decode([], <<"true", rest::bitstring>>), do: decode(true, rest)
     defp decode([], <<"false", rest::bitstring>>), do: decode(false, rest)
     defp decode([], <<"null", rest::bitstring>>), do: decode(nil, rest)
 
     defp decode([], <<"Symbol()", rest::bitstring>>), do: decode({:symbol, nil}, rest)
+
     defp decode([], <<"Symbol(", rest::bitstring>>) do
       [encoded_json, rest] = String.split(rest, ");\n", parts: 2)
+
       case Jason.decode(encoded_json) do
         {:ok, value} ->
           {:ok, {:symbol, value}, rest}
@@ -235,14 +240,28 @@ defmodule MiniModules.UniversalModules.Parser do
     end
 
     defp decode([], <<"new URL(", rest::bitstring>>) do
-      [encoded_json, rest] = String.split(rest, ");\n", parts: 2)
+      with(
+        {:ok, first, rest} when is_binary(first) <- decode([], rest),
+        rest = String.trim_leading(rest),
+        {:has_second, {:ok, second, rest}} <- case rest do
+          <<")", rest::bitstring>> ->
+            {:ok, {:url, first}, rest}
 
-      case Jason.decode(encoded_json) do
-        {:ok, value} ->
-          {:ok, {:url, value}, rest}
+          <<",", second_raw::bitstring>> ->
+            {:has_second, decode([], second_raw)}
 
-        {:error, error} ->
-          {:error, error}
+          rest ->
+            {:error, {:expected_argument_or_closed, rest}}
+        end,
+        {:ok, second, rest} <- case rest do
+          <<")", rest::bitstring>> ->
+            {:ok, second, rest}
+
+          rest ->
+            {:error, {:expected_closed, rest}}
+        end
+      ) do
+        {:ok, {:url, [relative: first, base: second]}, rest}
       end
     end
 
@@ -252,6 +271,21 @@ defmodule MiniModules.UniversalModules.Parser do
       case Jason.decode(encoded_json) do
         {:ok, value} ->
           {:ok, {:set, value}, rest}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+
+    @string_regex ~r/^(?<STRING>(?>"(?>\\(?>["\\\/bfnrt]|u[a-fA-F0-9]{4})|[^"\\\0-\x1F\x7F]+)*"))/
+
+    defp decode([], <<?", _::bitstring>> = input) do
+      ["", encoded_json, rest] =
+        Regex.split(@string_regex, input, parts: 2, include_captures: true)
+
+      case Jason.decode(encoded_json) do
+        {:ok, value} ->
+          {:ok, value, rest}
 
         {:error, error} ->
           {:error, error}
@@ -336,7 +370,7 @@ defmodule MiniModules.UniversalModules.Parser do
       do: decode([char], rest)
 
     defp decode(reverse_identifier, <<char::utf8, rest::bitstring>>)
-        when is_lower(char) or is_upper(char) or is_digit(char) do
+         when is_lower(char) or is_upper(char) or is_digit(char) do
       decode([char | reverse_identifier], rest)
     end
 
