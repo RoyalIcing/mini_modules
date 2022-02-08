@@ -222,6 +222,18 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode([], <<"false", rest::bitstring>>), do: decode(false, rest)
     defp decode([], <<"null", rest::bitstring>>), do: decode(nil, rest)
 
+    defp decode([], <<"Symbol()", rest::bitstring>>), do: decode({:symbol, nil}, rest)
+    defp decode([], <<"Symbol(", rest::bitstring>>) do
+      [encoded_json, rest] = String.split(rest, ");\n", parts: 2)
+      case Jason.decode(encoded_json) do
+        {:ok, value} ->
+          {:ok, {:symbol, value}, rest}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+
     defp decode([], <<"new URL(", rest::bitstring>>) do
       [encoded_json, rest] = String.split(rest, ");\n", parts: 2)
 

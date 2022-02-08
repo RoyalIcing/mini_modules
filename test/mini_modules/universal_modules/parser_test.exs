@@ -105,5 +105,17 @@ defmodule MiniModules.ParserTest do
              const luckyNumbers = new Set([1, 2, 3]);
              """) == {:ok, [{:const, "luckyNumbers", {:set, [1, 2, 3]}}]}
     end
+
+    test "Symbol" do
+      assert Parser.decode("""
+             const key = Symbol();
+             """) == {:ok, [{:const, "key", {:symbol, nil}}]}
+    end
+
+    test "Symbol with description" do
+      assert Parser.decode("""
+             const key = Symbol("special");
+             """) == {:ok, [{:const, "key", {:symbol, "special"}}]}
+    end
   end
 end
