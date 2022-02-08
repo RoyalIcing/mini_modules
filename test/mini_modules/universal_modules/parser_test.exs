@@ -81,5 +81,17 @@ defmodule MiniModules.ParserTest do
              }
              """) == {:ok, [{:generator_function, "hello", [], [yield: 42.0]}]}
     end
+
+    test "new URL" do
+      assert Parser.decode("""
+             const root = new URL("https://example.org");
+             """) == {:ok, [{:const, "root", {:url, "https://example.org"}}]}
+    end
+
+    test "new Set" do
+      assert Parser.decode("""
+             const luckyNumbers = new Set([1, 2, 3]);
+             """) == {:ok, [{:const, "luckyNumbers", {:set, [1, 2, 3]}}]}
+    end
   end
 end
