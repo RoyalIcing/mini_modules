@@ -31,6 +31,13 @@ defmodule MiniModules.UniversalModules.Parser do
     def decode(<<" ", rest::bitstring>>, result), do: decode(rest, result)
     def decode(<<";", rest::bitstring>>, result), do: decode(rest, result)
 
+    def decode(<<"//", _::bitstring>> = input, result) do
+      case compose(Comment, input) do
+        {:ok, term, rest} ->
+          decode(rest, [term | result])
+      end
+    end
+
     def decode(<<"const ", _::bitstring>> = input, result) do
       case compose(Const, input) do
         {:ok, term, rest} ->
@@ -134,6 +141,16 @@ defmodule MiniModules.UniversalModules.Parser do
          when char in [?\n, ?\t, ?;],
          do: decode(context, rest)
 
+    defp decode(%{body: {:open, body_items}} = context, <<"//", _::bitstring>> = input) do
+      case compose(Comment, input) do
+        {:ok, term, rest} ->
+          decode(%{context | body: {:open, [term | body_items]}}, rest)
+
+        {:error, reason} ->
+          {:error, {reason, body_items}}
+      end
+    end
+
     defp decode(%{body: {:open, body_items}} = context, <<"const ", _::bitstring>> = input) do
       case compose(Const, input) do
         {:ok, term, rest} ->
@@ -170,6 +187,13 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode(%{name: name, args: nil} = context, <<char::utf8, rest::bitstring>>) do
       name = [char | name]
       decode(%{context | name: name}, rest)
+    end
+  end
+
+  defmodule Comment do
+    def decode(<<"//", input::bitstring>>) do
+      [comment, rest] = String.split(input, "\n", parts: 2)
+      {:ok, {:comment, comment}, rest}
     end
   end
 
@@ -387,6 +411,11 @@ defmodule MiniModules.UniversalModules.Parser do
     end
 
     @regex_regex ~r/^(?<REGEX>(?>\/(?>\\(?>[\/\\\/bfnrt]|u[a-fA-F0-9]{4})|[^\/\\\0-\x1F\x7F]+)*\/))/
+
+    defp decode([], <<?/, ?/, _::bitstring>> = input) do
+      [comment, rest] = String.split(input, "\n", parts: 2)
+      {:ok, {:comment, comment}, rest}
+    end
 
     defp decode([], <<?/, _::bitstring>> = input) do
       ["", regex_source, rest] =

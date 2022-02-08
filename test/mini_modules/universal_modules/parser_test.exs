@@ -10,6 +10,19 @@ defmodule MiniModules.ParserTest do
       assert Parser.decode("") == {:ok, []}
     end
 
+    test "comment" do
+      assert Parser.decode("""
+             // First
+
+             // Second
+             """) ==
+               {:ok,
+                [
+                  {:comment, " First"},
+                  {:comment, " Second"}
+                ]}
+    end
+
     test "const true" do
       assert Parser.decode("""
              const isEnabled = true;
@@ -124,6 +137,7 @@ defmodule MiniModules.ParserTest do
     test "generator function yielding number with reply assigned to constant" do
       assert Parser.decode("""
              function* hello() {
+               // We do some stuff
                const reply = yield 42;
              }
              """) ==
@@ -131,6 +145,7 @@ defmodule MiniModules.ParserTest do
                 [
                   {:generator_function, "hello", [],
                    [
+                     {:comment, " We do some stuff"},
                      {:const, "reply", {:yield, 42.0}}
                    ]}
                 ]}

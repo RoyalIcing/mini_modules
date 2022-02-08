@@ -13,19 +13,19 @@ defmodule MiniModules.YieldParserTest do
   }
   """)
 
-  # @ip_address_source Parser.decode("""
-  # export function* IPAddress() {
-  #   const [first] = yield /^\d+/;
-  #   yield '.';
-  #   const [second] = yield /^\d+/;
-  #   yield '.';
-  #   const [third] = yield /^\d+/;
-  #   yield '.';
-  #   const [fourth] = yield /^\d+/;
-  #   yield mustEnd;
-  #   return [first, second, third, fourth];
-  # }
-  # """)
+  @ip_address_source Parser.decode("""
+  export function* IPAddress() {
+    //const [first] = yield /^\d+/;
+    yield ".";
+    //const [second] = yield /^\d+/;
+    yield ".";
+    //const [third] = yield /^\d+/;
+    yield ".";
+    //const [fourth] = yield /^\d+/;
+    yield mustEnd;
+    //return [first, second, third, fourth];
+  }
+  """)
 
   setup_all do
     {:ok, module} = @fruit_source
