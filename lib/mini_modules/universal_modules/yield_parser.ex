@@ -1,6 +1,6 @@
 defmodule MiniModules.UniversalModules.YieldParser do
   defmodule Context do
-    defstruct reply: nil
+    defstruct reply: nil, constants: %{}
   end
 
   def run_parser(module_body, input) do
@@ -22,8 +22,10 @@ defmodule MiniModules.UniversalModules.YieldParser do
   defp regex(source, rest) do
     case Regex.compile(source) do
       {:ok, regex} ->
-        ["", matched, rest] = Regex.split(regex, rest, parts: 2, include_captures: true)
-        {:ok, matched, rest}
+        case Regex.split(regex, rest, parts: 2, include_captures: true) do
+          ["", matched, rest] -> {:ok, matched, rest}
+          _ -> {:error, {:did_not_match, {:regex, source}, %{rest: rest}}}
+        end
 
       {:error, reason} ->
         {:error, {:invalid_regex, source, reason}}
@@ -42,7 +44,7 @@ defmodule MiniModules.UniversalModules.YieldParser do
     end
   end
 
-  defp evaluate([{:yield, [ref: "mustEnd"]} | statements], rest, context) do
+  defp evaluate([{:yield, {:ref, "mustEnd"}} | statements], rest, context) do
     case rest do
       "" ->
         evaluate(statements, rest, context)
@@ -85,12 +87,14 @@ defmodule MiniModules.UniversalModules.YieldParser do
          context
        )
        when is_binary(identifier) do
-    with {:ok, reply, rest} <- regex(regex_source, rest) do
-      evaluate(statements, rest, %Context{context | reply: reply})
+    with {:ok, match, rest} <- regex(regex_source, rest) do
+      evaluate(statements, rest, %Context{
+        context
+        | constants: Map.put(context.constants, identifier, match)
+      })
     else
       _ -> {:error, {:did_not_match, {:regex, regex_source}, %{rest: rest}}}
     end
-
   end
 
   # defp evaluate([{:const, [identifier], {:yield, yielded}} | statements], rest, _context)
@@ -98,11 +102,28 @@ defmodule MiniModules.UniversalModules.YieldParser do
   #   {:error, {:did_not_match, identifier, %{rest: rest}}}
   # end
 
-  defp evaluate([{:return, value}], rest, _context) do
-    {:ok, value, %{rest: rest}}
+  defp evaluate([{:return, value}], rest, context) do
+    return(value, rest, context)
   end
 
   defp evaluate([], rest, _context) do
     {:ok, nil, %{rest: rest}}
+  end
+
+  defp return(value, rest, context) when is_list(value) do
+    return_list(value, [], rest, context)
+  end
+
+  defp return(value, rest, _context) do
+    {:ok, value, %{rest: rest}}
+  end
+
+  defp return_list([{:ref, ref} | tail], transformed, rest, context) do
+    actual_value = Map.get(context.constants, ref)
+    return_list(tail, [actual_value | transformed], rest, context)
+  end
+
+  defp return_list([], transformed, rest, _context) do
+    {:ok, transformed |> Enum.reverse(), %{rest: rest}}
   end
 end

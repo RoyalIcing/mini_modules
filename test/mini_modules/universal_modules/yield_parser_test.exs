@@ -59,14 +59,13 @@ defmodule MiniModules.YieldParserTest do
     end
 
     test "ip address module with valid input", %{ip_address_module: ip_address_module} do
-      assert YieldParser.run_parser(ip_address_module, "1.1.1.1") ==
-               {:ok,
-                [
-                  [ref: "first"],
-                  [ref: "second"],
-                  [ref: "third"],
-                  [ref: "fourth"]
-                ], %{rest: ""}}
+      assert YieldParser.run_parser(ip_address_module, "1.2.4.9") ==
+               {:ok, ["1", "2", "4", "9"], %{rest: ""}}
+    end
+
+    test "ip address module with invalid input", %{ip_address_module: ip_address_module} do
+      assert YieldParser.run_parser(ip_address_module, "1.2.4.a") ==
+               {:error, {:did_not_match, {:regex, ~S"^\d+"}, %{rest: "a"}}}
     end
   end
 end

@@ -69,7 +69,7 @@ defmodule MiniModules.ParserTest do
                {:ok,
                 [
                   {:const, "a", "abc"},
-                  {:const, "b", [ref: "a"]}
+                  {:const, "b", {:ref, "a"}}
                 ]}
     end
 

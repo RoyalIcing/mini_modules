@@ -467,7 +467,7 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode([], <<char::utf8, rest::bitstring>> = input) when is_lower(char) or is_upper(char) do
       case compose(Identifier, input) do
         {:ok, identifier, rest} ->
-          decode([{:ref, identifier}], rest)
+          decode({:ref, identifier}, rest)
 
         {:error, reason} ->
           {:error, reason}
