@@ -28,6 +28,18 @@ defmodule MiniModules.ParserTest do
              """) == {:ok, [{:const, "a", "abc"}]}
     end
 
+    test "const referring earlier const" do
+      assert Parser.decode("""
+             const a = "abc";
+             const b = a;
+             """) ==
+               {:ok,
+                [
+                  {:const, "a", "abc"},
+                  {:const, "b", [ref: "a"]}
+                ]}
+    end
+
     test "const multiple" do
       assert Parser.decode("""
              const pi = 3.14;
