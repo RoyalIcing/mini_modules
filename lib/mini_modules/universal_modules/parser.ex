@@ -225,11 +225,9 @@ defmodule MiniModules.UniversalModules.Parser do
   defmodule Const do
     defdelegate compose(submodule, input), to: MiniModules.UniversalModules.Parser
 
-    def decode(<<"const ", rest::bitstring>>),
-      do: decode({:expect_identifier, []}, rest)
+    def decode(<<"const ", rest::bitstring>>), do: decode({:expect_identifier, []}, rest)
 
-    def decode(<<_::bitstring>>),
-      do: {:error, :expected_const}
+    def decode(<<_::bitstring>>), do: {:error, :expected_const}
 
     defp decode({expect, _} = context, <<" ", rest::bitstring>>)
          when expect in [:expect_identifier, :expect_destructuring, :expect_equal],
@@ -445,7 +443,7 @@ defmodule MiniModules.UniversalModules.Parser do
       decode([{:found_identifier, [char | reverse_identifier]} | context_rest], rest)
     end
 
-    @regex_regex ~r/^(?<REGEX>(?>\/(?>\\(?>[\/\\\/bfnrt]|u[a-fA-F0-9]{4})|[^\/\\\0-\x1F\x7F]+)*\/))/
+    @regex_regex ~r/^(?<REGEX>(?>\/(?>\\(?>[\/\\\(\[\]\)bBfnrtdwsS]|u[a-fA-F0-9]{4})|[^\/\0-\x1F\x7F]+)*\/))/
 
     defp decode([], <<?/, ?/, _::bitstring>> = input) do
       [comment, rest] = String.split(input, "\n", parts: 2)

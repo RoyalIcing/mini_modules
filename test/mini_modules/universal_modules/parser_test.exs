@@ -48,9 +48,17 @@ defmodule MiniModules.ParserTest do
     end
 
     test "const regex" do
-      assert Parser.decode("""
+      assert Parser.decode(~S"""
              const a = /[abc]+/;
-             """) == {:ok, [{:const, "a", {:regex, "[abc]+"}}]}
+             const b = /^[abc]+/;
+             const c = /^\d+/;
+             """) ==
+               {:ok,
+                [
+                  {:const, "a", {:regex, "[abc]+"}},
+                  {:const, "b", {:regex, "^[abc]+"}},
+                  {:const, "c", {:regex, ~S"^\d+"}}
+                ]}
     end
 
     test "const referring earlier const" do
@@ -132,16 +140,18 @@ defmodule MiniModules.ParserTest do
     end
 
     test "generator function yielding number" do
-      assert Parser.decode("""
+      assert Parser.decode(~S"""
              function* hello() {
                yield 42;
+               yield /^\d+/;
              }
              """) ==
                {:ok,
                 [
                   {:generator_function, "hello", [],
                    [
-                     yield: 42.0
+                     yield: 42.0,
+                     yield: {:regex, ~S"^\d+"}
                    ]}
                 ]}
     end

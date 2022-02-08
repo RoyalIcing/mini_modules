@@ -6,22 +6,22 @@ defmodule MiniModules.YieldParserTest do
 
   doctest YieldParser
 
-  @fruit_source Parser.decode("""
+  @fruit_source Parser.decode(~S"""
   export function* Fruit() {
     yield ["apple", "grape", "blueberry"];
     return true;
   }
   """)
 
-  @ip_address_source Parser.decode("""
+  @ip_address_source Parser.decode(~S"""
   export function* IPAddress() {
-    //const [first] = yield /^\d+/;
+    const [first] = yield /^\d+/;
     yield ".";
-    //const [second] = yield /^\d+/;
+    const [second] = yield /^\d+/;
     yield ".";
-    //const [third] = yield /^\d+/;
+    const [third] = yield /^\d+/;
     yield ".";
-    //const [fourth] = yield /^\d+/;
+    const [fourth] = yield /^\d+/;
     yield mustEnd;
     //return [first, second, third, fourth];
   }
