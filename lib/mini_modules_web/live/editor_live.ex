@@ -15,7 +15,13 @@ defmodule MiniModulesWeb.EditorLive do
       phx-change="changed">
       <textarea name="input" rows={10} class="w-full text-black"><%= @input %></textarea>
     </.form>
-    <!-- player -->
+
+    <%= if @error_message do %>
+    <div role="alert" class="p-4 text-red-300">
+      <%= @error_message %>
+    </div>
+    <% end %>
+
     <section>
       <output class="block"><%= @result %></output>
     </section>
@@ -26,9 +32,9 @@ defmodule MiniModulesWeb.EditorLive do
     decoded = try do
       UniversalModules.Parser.decode(input)
     rescue
-      _ -> []
+      _ -> {:error, :rescue}
     catch
-      _ -> []
+      _ -> {:error, :catch}
     end
     # decoded = UniversalModules.Parser.decode(input)
     # identifiers = UniversalModules.Inspector.list_identifiers(elem(decoded, 1))

@@ -1,4 +1,15 @@
 defmodule MiniModules.UniversalModules.Parser do
+  defmodule Error do
+    require Record
+    Record.defrecord(:error, reason: nil)
+    Record.defrecord(:empty_reason, :empty, rest: nil)
+
+    # @type empty :: record(:empty_reason, rest: String.t())
+
+    # def empty(rest), do: error(reason: {:empty, rest})
+    def empty(rest), do: error(reason: empty_reason(rest: rest))
+  end
+
   def compose(submodule, input) do
     mod = Module.concat(__MODULE__, submodule)
     apply(mod, :decode, [input])
@@ -93,7 +104,10 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode(%{args: {:closed, _}, body: nil} = context, <<"{", rest::bitstring>>),
       do: decode(%{context | body: {:open, []}}, rest)
 
-    defp decode(%{args: {:closed, args}, name: name, body: {:open, body_items}} = context, <<"}", rest::bitstring>>) do
+    defp decode(
+           %{args: {:closed, args}, name: name, body: {:open, body_items}} = context,
+           <<"}", rest::bitstring>>
+         ) do
       case context.generator_mark do
         true ->
           {:ok, {:generator_function, name, args, Enum.reverse(body_items)}, rest}
@@ -103,8 +117,9 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
-    defp decode(%{body: {:open, _}} = context, <<char::utf8, rest::bitstring>>) when char in [?\n, ?\t, ?;],
-      do: decode(context, rest)
+    defp decode(%{body: {:open, _}} = context, <<char::utf8, rest::bitstring>>)
+         when char in [?\n, ?\t, ?;],
+         do: decode(context, rest)
 
     defp decode(%{body: {:open, body_items}} = context, <<"const ", _::bitstring>> = input) do
       case compose(Const, input) do
@@ -184,6 +199,9 @@ defmodule MiniModules.UniversalModules.Parser do
     end
   end
 
+  defmodule CommaSeparatedList do
+  end
+
   defmodule Expression do
     import Unicode.Guards
 
@@ -206,6 +224,7 @@ defmodule MiniModules.UniversalModules.Parser do
 
     defp decode([], <<"new URL(", rest::bitstring>>) do
       [encoded_json, rest] = String.split(rest, ");\n", parts: 2)
+
       case Jason.decode(encoded_json) do
         {:ok, value} ->
           {:ok, {:url, value}, rest}
@@ -217,6 +236,7 @@ defmodule MiniModules.UniversalModules.Parser do
 
     defp decode([], <<"new Set(", rest::bitstring>>) do
       [encoded_json, rest] = String.split(rest, ");\n", parts: 2)
+
       case Jason.decode(encoded_json) do
         {:ok, value} ->
           {:ok, {:set, value}, rest}
@@ -233,6 +253,7 @@ defmodule MiniModules.UniversalModules.Parser do
     # defp decode([], <<"{", rest::bitstring>>), do: decode([nil], rest)
     defp decode([], <<char::utf8, _::bitstring>> = input) when char in [?[, ?{, ?"] do
       [encoded_json, rest] = String.split(input, ";\n", parts: 2)
+
       case Jason.decode(encoded_json) do
         {:ok, value} ->
           {:ok, value, rest}
@@ -253,7 +274,7 @@ defmodule MiniModules.UniversalModules.Parser do
     end
 
     defp decode([] = context, <<"-", char::utf8, _::bitstring>> = source)
-          when char in '0123456789' do
+         when char in '0123456789' do
       case Float.parse(source) do
         :error ->
           {:error, {:invalid_number, context, source}}
@@ -266,8 +287,11 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode([], <<char::utf8, rest::bitstring>>) when is_lower(char) or is_upper(char),
       do: decode([{:found_identifier, [char]}], rest)
 
-    defp decode([{:found_identifier, reverse_identifier} | context_rest], <<char::utf8, rest::bitstring>>)
-          when is_lower(char) or is_upper(char) or is_digit(char) do
+    defp decode(
+           [{:found_identifier, reverse_identifier} | context_rest],
+           <<char::utf8, rest::bitstring>>
+         )
+         when is_lower(char) or is_upper(char) or is_digit(char) do
       decode([{:found_identifier, [char | reverse_identifier]} | context_rest], rest)
     end
   end
@@ -284,8 +308,32 @@ defmodule MiniModules.UniversalModules.Parser do
 
     def decode(<<"Symbol", rest::bitstring>>), do: {:ok, __MODULE__.Symbol, rest}
     def decode(<<"URL", rest::bitstring>>), do: {:ok, __MODULE__.URL, rest}
-    def decode(<<"URLSearchParams", rest::bitstring>>), do: {:ok, __MODULE__.URLSearchParams, rest}
+
+    def decode(<<"URLSearchParams", rest::bitstring>>),
+      do: {:ok, __MODULE__.URLSearchParams, rest}
 
     def decode(_), do: {:error, :unknown_identifier}
+  end
+
+  defmodule Identifier do
+    import Unicode.Guards
+
+    def decode(input), do: decode([], input)
+
+    defp decode([], <<char::utf8, rest::bitstring>>) when is_lower(char) or is_upper(char),
+      do: decode([char], rest)
+
+    defp decode(reverse_identifier, <<char::utf8, rest::bitstring>>)
+        when is_lower(char) or is_upper(char) or is_digit(char) do
+      decode([char | reverse_identifier], rest)
+    end
+
+    # defp decode([], _rest), do: {:error, :empty}
+    defp decode([], rest), do: Error.empty(rest)
+
+    defp decode(reverse_identifier, rest) do
+      identifier = reverse_identifier |> Enum.reverse() |> :binary.list_to_bin()
+      {:ok, identifier, rest}
+    end
   end
 end

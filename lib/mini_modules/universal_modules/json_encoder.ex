@@ -6,6 +6,9 @@ defmodule MiniModules.UniversalModules.JSONEncoder do
   defp encode({:export, {:const, name, {:set, members}}}),
     do: [{name, MapSet.to_list(MapSet.new(members))}] # TODO: preserve order
 
+  defp encode({:export, {:const, name, {:url, href}}}),
+    do: [{name, href}]
+
   defp encode(_), do: []
 
   def to_json(module_body) do
