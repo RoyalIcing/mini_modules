@@ -279,7 +279,7 @@ defmodule MiniModules.UniversalModules.Parser do
       do: {:ok, {:const, identifier, expression}, ""}
 
     defp decode({identifier, :expect_expression, []}, <<"yield ", input::bitstring>>) do
-      case MiniModules.UniversalModules.Parser.compose(Expression, input) do
+      case compose(Expression, input) do
         {:ok, term, rest} ->
           {:ok, {:const, identifier, {:yield, term}}, rest}
 
@@ -289,7 +289,7 @@ defmodule MiniModules.UniversalModules.Parser do
     end
 
     defp decode({identifier, :expect_expression, []}, input) do
-      case MiniModules.UniversalModules.Parser.compose(Expression, input) do
+      case compose(Expression, input) do
         {:ok, expression, rest} ->
           {:ok, {:const, identifier, expression}, rest}
 
@@ -300,23 +300,18 @@ defmodule MiniModules.UniversalModules.Parser do
   end
 
   defmodule CommaSeparatedList do
-    # def decode(input), do: decode([], input)
+    # def decode(input, end_char), do: decode([], input)
   end
 
   defmodule Expression do
     import Unicode.Guards
 
+    defdelegate compose(submodule, input), to: MiniModules.UniversalModules.Parser
+
     def decode(input), do: decode([], input)
 
-    defp finalize([{:found_identifier, reverse_identifier} | context_rest]) do
-      identifier = reverse_identifier |> Enum.reverse() |> :binary.list_to_bin()
-      [{:ref, identifier} | context_rest]
-    end
-
-    defp finalize(expression), do: expression
-
     defp decode(expression, <<";", rest::bitstring>>),
-      do: {:ok, finalize(expression), rest}
+      do: {:ok, expression, rest}
 
     # Skip leading whitespace
     defp decode([] = context, <<" ", rest::bitstring>>), do: decode(context, rest)
@@ -394,6 +389,43 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
+    defp decode([], <<?[, rest::bitstring>>), do: decode({:array, []}, rest)
+
+    defp decode({:array, items}, <<" ", rest::bitstring>>) do
+      decode({:array, items}, rest)
+    end
+
+    defp decode({:array, items}, <<",", rest::bitstring>>) do
+      decode({:array, items}, rest)
+    end
+
+    defp decode({:array, reversed}, <<?], rest::bitstring>>) do
+      items = reversed |> Enum.reverse()
+      {:ok, items, rest}
+    end
+
+    defp decode({:array, items}, input) do
+      case decode([], input) do
+        {:ok, value, rest} ->
+          decode({:array, [value | items]}, rest)
+
+        {:hit_comma, value, rest} ->
+          decode({:array, [value | items]}, rest)
+
+        {:end_array, value, rest} ->
+          {:ok, [value | items] |> Enum.reverse(), rest}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+
+    defp decode(expression, <<",", rest::bitstring>>),
+      do: {:hit_comma, expression, rest}
+
+    defp decode(expression, <<"]", rest::bitstring>>),
+      do: {:end_array, expression, rest}
+
     # TODO: parse JSON by finding the end character followed by a semicolon + newline.
     # JSON strings cannoc contain literal newlines (it’s considered to be a control character),
     # so instead it must be encoded as "\n". So we can use this fast to know an actual newline is
@@ -432,15 +464,14 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
-    defp decode([], <<char::utf8, rest::bitstring>>) when is_lower(char) or is_upper(char),
-      do: decode([{:found_identifier, [char]}], rest)
+    defp decode([], <<char::utf8, rest::bitstring>> = input) when is_lower(char) or is_upper(char) do
+      case compose(Identifier, input) do
+        {:ok, identifier, rest} ->
+          decode([{:ref, identifier}], rest)
 
-    defp decode(
-           [{:found_identifier, reverse_identifier} | context_rest],
-           <<char::utf8, rest::bitstring>>
-         )
-         when is_lower(char) or is_upper(char) or is_digit(char) do
-      decode([{:found_identifier, [char | reverse_identifier]} | context_rest], rest)
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
 
     @regex_regex ~r/^(?<REGEX>(?>\/(?>\\(?>[\/\\\(\[\]\)bBfnrtdwsS]|u[a-fA-F0-9]{4})|[^\/\0-\x1F\x7F]+)*\/))/
