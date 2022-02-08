@@ -236,15 +236,16 @@ defmodule MiniModules.UniversalModules.Parser do
          do: decode(context, rest)
 
     defp decode({:expect_identifier, []}, <<"[", rest::bitstring>>),
-      do: decode({:expect_destructuring, {[], 0}}, rest)
+      do: decode({:expect_destructuring, {[], 1}}, rest)
 
-    defp decode({:expect_identifier, reverse_identifier}, <<"=", rest::bitstring>>) do
-      identifier = reverse_identifier |> Enum.reverse() |> :binary.list_to_bin()
-      decode({identifier, :expect_expression, []}, rest)
-    end
+    defp decode({:expect_identifier, []}, input) do
+      case compose(Identifier, input) do
+        {:ok, identifier, rest} ->
+          decode({:expect_equal, identifier}, rest)
 
-    defp decode({:expect_identifier, reverse_identifier}, <<char::utf8, rest::bitstring>>) do
-      decode({:expect_identifier, [char | reverse_identifier]}, rest)
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
 
     defp decode({:expect_destructuring, {identifiers, 0}}, <<",", rest::bitstring>>),

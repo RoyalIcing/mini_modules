@@ -73,8 +73,8 @@ defmodule MiniModules.ParserTest do
 
     test "const destructuring array with skipping" do
       assert Parser.decode("""
-             const [a,,, b] = [1, 2, 3, 4, 5];
-             """) == {:ok, [{:const, ["a", nil, nil, "b"], [1, 2, 3, 4, 5]}]}
+             const [, a,,, b] = [1, 2, 3, 4, 5];
+             """) == {:ok, [{:const, [nil, "a", nil, nil, "b"], [1, 2, 3, 4, 5]}]}
     end
 
     test "const multiple" do
