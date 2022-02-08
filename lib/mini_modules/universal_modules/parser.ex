@@ -51,7 +51,7 @@ defmodule MiniModules.UniversalModules.Parser do
     end
 
     def decode(input, result) do
-      {:error, :unexpected_eof, input, result}
+      {:error, {:unexpected_eof, input, result}}
     end
   end
 

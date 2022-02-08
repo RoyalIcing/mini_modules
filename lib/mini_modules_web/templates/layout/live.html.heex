@@ -1,3 +1,9 @@
+<.flash flash={@flash} kind={:info}/>
+<.flash flash={@flash} kind={:error}/>
+<.connection_status>
+  Re-establishing connection...
+</.connection_status>
+
 <main class="container">
   <p class="alert alert-info" role="alert"
     phx-click="lv:clear-flash"
