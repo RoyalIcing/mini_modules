@@ -68,13 +68,23 @@ defmodule MiniModules.UniversalModules.Parser do
 
   defmodule Export do
     def decode(<<"export ", rest::bitstring>>) do
-      case MiniModules.UniversalModules.Parser.compose(Const, rest) do
+      with(
+        {:error, :expected_const} <- MiniModules.UniversalModules.Parser.compose(Const, rest),
+        {:error, :expected_function} <- MiniModules.UniversalModules.Parser.compose(Function, rest)
+      ) do
+        {:error, :expected_const_or_function}
+      else
         {:ok, term, rest} ->
           {:ok, {:export, term}, rest}
-
-        {:error, reason} ->
-          {:error, reason}
       end
+
+      # case MiniModules.UniversalModules.Parser.compose(Const, rest) do
+      #   {:ok, term, rest} ->
+      #     {:ok, {:export, term}, rest}
+
+      #   {:error, reason} ->
+      #     {:error, reason}
+      # end
     end
   end
 
@@ -83,6 +93,9 @@ defmodule MiniModules.UniversalModules.Parser do
 
     def decode(<<"function", rest::bitstring>>),
       do: decode(%{generator_mark: nil, name: nil, args: nil, body: nil}, rest)
+
+    def decode(<<_::bitstring>>),
+      do: {:error, :expected_function}
 
     defp decode(context, <<" ", rest::bitstring>>),
       do: decode(context, rest)
@@ -141,6 +154,16 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
+    defp decode(%{body: {:open, body_items}} = context, <<"return ", _::bitstring>> = input) do
+      case compose(Return, input) do
+        {:ok, term, rest} ->
+          decode(%{context | body: {:open, [term | body_items]}}, rest)
+
+        {:error, reason} ->
+          {:error, {reason, body_items}}
+      end
+    end
+
     defp decode(%{name: nil, args: nil} = context, <<char::utf8, rest::bitstring>>),
       do: decode(%{context | name: [char]}, rest)
 
@@ -155,6 +178,18 @@ defmodule MiniModules.UniversalModules.Parser do
       case MiniModules.UniversalModules.Parser.compose(Expression, rest) do
         {:ok, term, rest} ->
           {:ok, {:yield, term}, rest}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defmodule Return do
+    def decode(<<"return ", rest::bitstring>>) do
+      case MiniModules.UniversalModules.Parser.compose(Expression, rest) do
+        {:ok, term, rest} ->
+          {:ok, {:return, term}, rest}
 
         {:error, reason} ->
           {:error, reason}

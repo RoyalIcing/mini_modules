@@ -86,6 +86,14 @@ defmodule MiniModules.ParserTest do
              """) == {:ok, [{:function, "hello", [], []}]}
     end
 
+    test "function returning number" do
+      assert Parser.decode("""
+             function hello() {
+               return 42;
+             }
+             """) == {:ok, [{:function, "hello", [], [{:return, 42}]}]}
+    end
+
     test "empty generator function" do
       assert Parser.decode("""
              function* hello() {}
@@ -98,6 +106,20 @@ defmodule MiniModules.ParserTest do
                yield 42;
              }
              """) == {:ok, [{:generator_function, "hello", [], [yield: 42.0]}]}
+    end
+
+    test "export empty function" do
+      assert Parser.decode("""
+             export function hello() {}
+             """) == {:ok, [export: {:function, "hello", [], []}]}
+    end
+
+    test "export generator function yielding number" do
+      assert Parser.decode("""
+             export function* hello() {
+               yield 42;
+             }
+             """) == {:ok, [export: {:generator_function, "hello", [], [yield: 42.0]}]}
     end
 
     test "new URL" do

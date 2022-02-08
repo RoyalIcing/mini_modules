@@ -12,7 +12,7 @@ defmodule MiniModules.JSONEncoderTest do
     end
   end
 
-  describe "decode/1" do
+  describe "to_json/1" do
     test "empty" do
       assert subject("") == %{}
     end
