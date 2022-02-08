@@ -77,7 +77,8 @@ defmodule MiniModules.UniversalModules.Parser do
     def decode(<<"export ", rest::bitstring>>) do
       with(
         {:error, :expected_const} <- MiniModules.UniversalModules.Parser.compose(Const, rest),
-        {:error, :expected_function} <- MiniModules.UniversalModules.Parser.compose(Function, rest)
+        {:error, :expected_function} <-
+          MiniModules.UniversalModules.Parser.compose(Function, rest)
       ) do
         {:error, :expected_const_or_function}
       else
@@ -222,14 +223,20 @@ defmodule MiniModules.UniversalModules.Parser do
   end
 
   defmodule Const do
+    defdelegate compose(submodule, input), to: MiniModules.UniversalModules.Parser
+
     def decode(<<"const ", rest::bitstring>>),
       do: decode({:expect_identifier, []}, rest)
 
     def decode(<<_::bitstring>>),
       do: {:error, :expected_const}
 
-    defp decode({:expect_identifier, _} = context, <<" ", rest::bitstring>>),
-      do: decode(context, rest)
+    defp decode({expect, _} = context, <<" ", rest::bitstring>>)
+         when expect in [:expect_identifier, :expect_destructuring, :expect_equal],
+         do: decode(context, rest)
+
+    defp decode({:expect_identifier, []}, <<"[", rest::bitstring>>),
+      do: decode({:expect_destructuring, {[], 0}}, rest)
 
     defp decode({:expect_identifier, reverse_identifier}, <<"=", rest::bitstring>>) do
       identifier = reverse_identifier |> Enum.reverse() |> :binary.list_to_bin()
@@ -238,6 +245,31 @@ defmodule MiniModules.UniversalModules.Parser do
 
     defp decode({:expect_identifier, reverse_identifier}, <<char::utf8, rest::bitstring>>) do
       decode({:expect_identifier, [char | reverse_identifier]}, rest)
+    end
+
+    defp decode({:expect_destructuring, {identifiers, 0}}, <<",", rest::bitstring>>),
+      do: decode({:expect_destructuring, {identifiers, 1}}, rest)
+
+    defp decode({:expect_destructuring, {identifiers, n}}, <<",", rest::bitstring>>),
+      do: decode({:expect_destructuring, {[nil | identifiers], n + 1}}, rest)
+
+    defp decode({:expect_destructuring, {reversed, _}}, <<"]", rest::bitstring>>) do
+      identifiers = reversed |> Enum.reverse()
+      decode({:expect_equal, identifiers}, rest)
+    end
+
+    defp decode({:expect_destructuring, {identifiers, _}}, input) do
+      case compose(Identifier, input) do
+        {:ok, identifier, rest} ->
+          decode({:expect_destructuring, {[identifier | identifiers], 0}}, rest)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+
+    defp decode({:expect_equal, payload}, <<"=", rest::bitstring>>) do
+      decode({payload, :expect_expression, []}, rest)
     end
 
     # Skip whitespace
@@ -312,23 +344,25 @@ defmodule MiniModules.UniversalModules.Parser do
       with(
         {:ok, first, rest} when is_binary(first) <- decode([], rest),
         rest = String.trim_leading(rest),
-        {:has_second, {:ok, second, rest}} <- case rest do
-          <<")", rest::bitstring>> ->
-            {:ok, {:url, first}, rest}
+        {:has_second, {:ok, second, rest}} <-
+          case rest do
+            <<")", rest::bitstring>> ->
+              {:ok, {:url, first}, rest}
 
-          <<",", second_raw::bitstring>> ->
-            {:has_second, decode([], second_raw)}
+            <<",", second_raw::bitstring>> ->
+              {:has_second, decode([], second_raw)}
 
-          rest ->
-            {:error, {:expected_argument_or_closed, rest}}
-        end,
-        {:ok, second, rest} <- case rest do
-          <<")", rest::bitstring>> ->
-            {:ok, second, rest}
+            rest ->
+              {:error, {:expected_argument_or_closed, rest}}
+          end,
+        {:ok, second, rest} <-
+          case rest do
+            <<")", rest::bitstring>> ->
+              {:ok, second, rest}
 
-          rest ->
-            {:error, {:expected_closed, rest}}
-        end
+            rest ->
+              {:error, {:expected_closed, rest}}
+          end
       ) do
         {:ok, {:url, [relative: first, base: second]}, rest}
       end
