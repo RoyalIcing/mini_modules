@@ -27,13 +27,34 @@ defmodule MiniModules.YieldParserTest do
                      }
                      """)
 
+  @ip_address_2_source Parser.decode(~S"""
+                       function* Digit() {
+                         const [digit] = yield /^\d+/;
+                         return digit;
+                       }
+
+                       export function* IPAddress() {
+                         const first = yield Digit;
+                         yield ".";
+                         const second = yield Digit;
+                         yield ".";
+                         const third = yield Digit;
+                         yield ".";
+                         const fourth = yield Digit;
+                         yield mustEnd;
+                         return [first, second, third, fourth];
+                       }
+                       """)
+
   setup_all do
     {:ok, fruit_module} = @fruit_source
     {:ok, ip_address_module} = @ip_address_source
+    {:ok, ip_address_2_module} = @ip_address_2_source
 
     [
       fruit_module: fruit_module,
-      ip_address_module: ip_address_module
+      ip_address_module: ip_address_module,
+      ip_address_2_module: ip_address_2_module
     ]
   end
 
@@ -66,6 +87,11 @@ defmodule MiniModules.YieldParserTest do
     test "ip address module with invalid input", %{ip_address_module: ip_address_module} do
       assert YieldParser.run_parser(ip_address_module, "1.2.4.a") ==
                {:error, {:did_not_match, {:regex, ~S"^\d+"}, %{rest: "a"}}}
+    end
+
+    test "composed ip address module with valid input", %{ip_address_2_module: ip_address_2_module} do
+      assert YieldParser.run_parser(ip_address_2_module, "1.2.4.9") ==
+               {:ok, ["1", "2", "4", "9"], %{rest: ""}}
     end
   end
 end

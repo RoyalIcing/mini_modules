@@ -1,10 +1,24 @@
 defmodule MiniModules.UniversalModules.YieldParser do
   defmodule Context do
-    defstruct reply: nil, constants: %{}
+    defstruct reply: nil, constants: %{}, components: %{}
+
+    def from_module(module_body) do
+      components =
+        Map.new(for statement <- module_body, result <- from_statement(statement), do: result)
+
+      %Context{components: components}
+    end
+
+    defp from_statement({:generator_function, name, _args, _body} = statement),
+      do: [{name, statement}]
+
+    defp from_statement(_), do: []
   end
 
   def run_parser(module_body, input) do
-    results = for statement <- module_body, result <- run(statement, input), do: result
+    context = Context.from_module(module_body)
+
+    results = for statement <- module_body, result <- run(statement, input, context), do: result
 
     case results do
       [result] -> result
@@ -13,11 +27,11 @@ defmodule MiniModules.UniversalModules.YieldParser do
     end
   end
 
-  defp run({:export, {:generator_function, _name, _args, body}}, input) do
-    [evaluate(body, input, %Context{})]
+  defp run({:export, {:generator_function, _name, _args, body}}, input, context) do
+    [evaluate(body, input, context)]
   end
 
-  defp run(_, _), do: []
+  defp run(_, _, _), do: []
 
   defp regex(source, rest) do
     case Regex.compile(source) do
@@ -97,6 +111,22 @@ defmodule MiniModules.UniversalModules.YieldParser do
     end
   end
 
+  defp evaluate(
+         [{:const, identifier, {:yield, {:ref, component_name}}} | statements],
+         rest,
+         %Context{components: components} = context
+       )
+       when is_map_key(components, component_name) do
+    {:generator_function, _name, _args, body} = components[component_name]
+    case evaluate(body, rest, context) do
+      {:ok, value, %{rest: rest}} ->
+        evaluate(statements, rest, %Context{
+          context
+          | constants: Map.put(context.constants, identifier, value)
+        })
+    end
+  end
+
   # defp evaluate([{:const, [identifier], {:yield, yielded}} | statements], rest, _context)
   #      when is_binary(identifier) do
   #   {:error, {:did_not_match, identifier, %{rest: rest}}}
@@ -108,6 +138,11 @@ defmodule MiniModules.UniversalModules.YieldParser do
 
   defp evaluate([], rest, _context) do
     {:ok, nil, %{rest: rest}}
+  end
+
+  defp return({:ref, identifier}, rest, context) do
+    actual_value = Map.get(context.constants, identifier)
+    {:ok, actual_value, %{rest: rest}}
   end
 
   defp return(value, rest, context) when is_list(value) do
