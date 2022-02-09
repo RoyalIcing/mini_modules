@@ -13,19 +13,19 @@ defmodule MiniModulesWeb.YieldParserLive do
       id="editor-form"
       class="flex gap-4"
       phx-change="changed">
-      <fieldset class="grow">
-        <textarea name="source" rows={16} class="w-full text-black"><%= @source %></textarea>
-        <textarea name="input" rows={1} class="w-full text-black"><%= @input %></textarea>
-      </fieldset>
+      <textarea name="source" rows={16} class="w-full font-mono text-black"><%= @source %></textarea>
 
-      <%= if @error_message do %>
-      <div role="alert" class="p-4 text-red-300">
-        <%= @error_message %>
-      </div>
-      <% end %>
 
-      <section class="block w-1/2">
-        <output class="block"><%= inspect(@result) %></output>
+      <section class="block w-1/2 space-y-4">
+        <textarea name="input" rows={1} class="w-full font-mono text-black"><%= @input %></textarea>
+        <%= if @error_message do %>
+          <div role="alert" class="text-red-300">
+            <%= @error_message %>
+          </div>
+        <% end %>
+        <%= if @result do %>
+          <output class="block"><%= inspect(@result) %></output>
+        <% end %>
         <dl class="block">
           <dt class="font-bold">Rest</dt>
           <dd class="ml-8"><pre>"<%= @rest %>"</pre></dd>
@@ -79,20 +79,20 @@ defmodule MiniModulesWeb.YieldParserLive do
        process(
          ~S"""
          function* Digit() {
-          const [digit] = yield /^\d+/;
-          return digit;
+           const [digit] = yield /^\d+/;
+           return digit;
          }
 
          export function* IPAddress() {
-          const first = yield Digit;
-          yield ".";
-          const second = yield Digit;
-          yield ".";
-          const third = yield Digit;
-          yield ".";
-          const fourth = yield Digit;
-          yield mustEnd;
-          return [first, second, third, fourth];
+           const first = yield Digit;
+           yield ".";
+           const second = yield Digit;
+           yield ".";
+           const third = yield Digit;
+           yield ".";
+           const fourth = yield Digit;
+           yield mustEnd;
+           return [first, second, third, fourth];
          }
          """,
          "1.2.3.4"
