@@ -22,6 +22,7 @@ defmodule MiniModulesWeb.Router do
     get "/universal-modules", UniversalModulesController, :index
     get "/editor", EditorController, :index
     live "/live-editor", EditorLive, :index
+    live "/yieldparser", YieldParserLive, :index
   end
 
   # Other scopes may use custom stacks.
