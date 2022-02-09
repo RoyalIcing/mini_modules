@@ -9,6 +9,7 @@ defmodule MiniModules.YieldParserTest do
   @fruit_source Parser.decode(~S"""
                 export function* Fruit() {
                   yield ["apple", "grape", "blueberry"];
+                  // Some comment
                   return true;
                 }
                 """)

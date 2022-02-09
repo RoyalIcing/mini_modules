@@ -46,6 +46,8 @@ defmodule MiniModules.UniversalModules.YieldParser do
     end
   end
 
+  defp evaluate([{:comment, _} | statements], rest, context), do: evaluate(statements, rest, context)
+
   defp evaluate([{:yield, value} | statements], rest, context) when is_binary(value) do
     size = byte_size(value)
 
@@ -118,12 +120,16 @@ defmodule MiniModules.UniversalModules.YieldParser do
        )
        when is_map_key(components, component_name) do
     {:generator_function, _name, _args, body} = components[component_name]
+
     case evaluate(body, rest, context) do
       {:ok, value, %{rest: rest}} ->
         evaluate(statements, rest, %Context{
           context
           | constants: Map.put(context.constants, identifier, value)
         })
+
+      {:error, _reason} = tuple ->
+        tuple
     end
   end
 
