@@ -8,51 +8,88 @@ defmodule MiniModules.YieldMachineTest do
 
   @switch_source Parser.decode(~S"""
                  export function Switch() {
-                   function* OFF() {
-                     yield on("FLICK", ON);
+                   function* Off() {
+                     yield on("FLICK", On);
                    }
-                   function* ON() {
-                     yield on("FLICK", OFF);
+                   function* On() {
+                     yield on("FLICK", Off);
                    }
 
-                   return OFF;
+                   return Off;
                  }
                  """)
-  @switch_expected_components [{"OFF", "FLICK", "ON"}, {"ON", "FLICK", "OFF"}]
+  @switch_expected_components [{"Off", "FLICK", "On"}, {"On", "FLICK", "Off"}]
+
+  @advanced_switch_source Parser.decode(~S"""
+                          export function Switch() {
+                            function* Off() {
+                              yield on("FLICK", On);
+                            }
+                            function* On() {
+                              yield on("FLICK", Off);
+                              yield on("SHORT", CircuitBreakerTripped);
+                            }
+                            function* CircuitBreakerTripped() {
+                              yield on("FLICK_CIRCUIT_BREAKER", Off);
+                            }
+
+                            return Off;
+                          }
+                          """)
+  @advanced_switch_expected_components [
+    {"FLICK_CIRCUIT_BREAKER", "RestoreCircuitBreaker", "Off"},
+    {"Off", "FLICK", "On"},
+    {"On", "FLICK", "Off"},
+    {"On", "SHORT", "CircuitBreakerTripped"}
+  ]
 
   setup_all do
     {:ok, switch_module} = @switch_source
+    {:ok, advanced_switch_module} = @advanced_switch_source
 
     [
-      switch_module: switch_module
+      switch_module: switch_module,
+      advanced_switch_module: advanced_switch_module
     ]
   end
 
   describe "interpret_machine/1" do
     test "returns initial state", %{switch_module: switch_module} do
       assert YieldMachine.interpret_machine(switch_module) ==
-               {:ok, %{current: "OFF", components: @switch_expected_components}}
+               {:ok, %{current: "Off", components: @switch_expected_components}}
     end
   end
 
   describe "interpret_machine/2" do
-    test "recognizes events", %{switch_module: switch_module} do
+    test "recognizes events", %{
+      switch_module: switch_module,
+      advanced_switch_module: advanced_switch_module
+    } do
       assert YieldMachine.interpret_machine(switch_module, ["FLICK"]) ==
-               {:ok, %{current: "ON", components: @switch_expected_components}}
+               {:ok, %{current: "On", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK"]) ==
-               {:ok, %{current: "OFF", components: @switch_expected_components}}
+               {:ok, %{current: "Off", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK", "FLICK"]) ==
-               {:ok, %{current: "ON", components: @switch_expected_components}}
+               {:ok, %{current: "On", components: @switch_expected_components}}
+
+      assert YieldMachine.interpret_machine(advanced_switch_module, ["FLICK"]) ==
+               {:ok, %{current: "On", components: @advanced_switch_expected_components}}
+
+      assert YieldMachine.interpret_machine(advanced_switch_module, ["FLICK", "FLICK"]) ==
+               {:ok, %{current: "Off", components: @advanced_switch_expected_components}}
+
+      assert YieldMachine.interpret_machine(advanced_switch_module, ["FLICK", "FLICK", "FLICK"]) ==
+               {:ok, %{current: "On", components: @advanced_switch_expected_components}}
     end
 
     test "ignores unknown events", %{switch_module: switch_module} do
       assert YieldMachine.interpret_machine(switch_module, ["BLAH"]) ==
-               {:ok, %{current: "OFF", components: @switch_expected_components}}
+               {:ok, %{current: "Off", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, ["BLAH", "FLICK"]) ==
-               {:ok, %{current: "ON", components: @switch_expected_components}}
+               {:ok, %{current: "On", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, [
                "BLAH",
@@ -60,7 +97,7 @@ defmodule MiniModules.YieldMachineTest do
                "FOO",
                "BLAH",
                "FLICK"
-             ]) == {:ok, %{current: "OFF", components: @switch_expected_components}}
+             ]) == {:ok, %{current: "Off", components: @switch_expected_components}}
     end
   end
 end
