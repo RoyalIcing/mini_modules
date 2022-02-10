@@ -27,9 +27,38 @@ defmodule MiniModules.YieldMachineTest do
     ]
   end
 
-  describe "interpret_machine/2" do
-    test "switch module", %{switch_module: switch_module} do
+  describe "interpret_machine/1" do
+    test "returns initial state", %{switch_module: switch_module} do
       assert YieldMachine.interpret_machine(switch_module) == {:ok, %{state: "OFF"}}
+    end
+  end
+
+  describe "interpret_machine/2" do
+    test "recognizes events", %{switch_module: switch_module} do
+      assert YieldMachine.interpret_machine(switch_module, ["FLICK"]) ==
+               {:ok, %{state: "ON"}}
+
+      assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK"]) ==
+               {:ok, %{state: "OFF"}}
+
+      assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK", "FLICK"]) ==
+               {:ok, %{state: "ON"}}
+    end
+
+    test "ignores unknown events", %{switch_module: switch_module} do
+      assert YieldMachine.interpret_machine(switch_module, ["BLAH"]) ==
+               {:ok, %{state: "OFF"}}
+
+      assert YieldMachine.interpret_machine(switch_module, ["BLAH", "FLICK"]) ==
+               {:ok, %{state: "ON"}}
+
+      assert YieldMachine.interpret_machine(switch_module, [
+               "BLAH",
+               "FLICK",
+               "FOO",
+               "BLAH",
+               "FLICK"
+             ]) == {:ok, %{state: "OFF"}}
     end
   end
 end
