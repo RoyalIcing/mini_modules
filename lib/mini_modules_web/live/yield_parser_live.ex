@@ -13,11 +13,10 @@ defmodule MiniModulesWeb.YieldParserLive do
       id="editor-form"
       class="flex gap-4"
       phx-change="changed">
-      <textarea name="source" rows={16} class="w-full font-mono text-black"><%= @source %></textarea>
-
+      <textarea name="source" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @source %></textarea>
 
       <section class="block w-1/2 space-y-4">
-        <textarea name="input" rows={1} class="w-full font-mono text-black"><%= @input %></textarea>
+        <textarea name="input" rows={1} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>
         <%= if @error_message do %>
           <div role="alert" class="text-red-300">
             <%= @error_message %>

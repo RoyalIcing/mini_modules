@@ -2,10 +2,7 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-:root {
-  background: #222;
-  color: white;
-}
+:root {}
 
 /* This file is for your main application CSS */
 
