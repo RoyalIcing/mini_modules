@@ -24,10 +24,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
         <%= if @state do %>
           <output class="block"><%= inspect(@state) %></output>
         <% end %>
-        <dl class="block">
-          <dt class="font-bold">Rest</dt>
-          <dd class="ml-8"><pre>"<%= "blah" %>"</pre></dd>
-        </dl>
       </section>
     </.form>
 
