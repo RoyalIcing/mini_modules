@@ -1,6 +1,6 @@
 defmodule MiniModules.UniversalModules.YieldMachine do
   defmodule Context do
-    defstruct reply: nil, constants: %{}, components: %{}
+    defstruct components: %{}, constants: %{}
 
     def from_module(module_body) do
       components =
@@ -13,6 +13,10 @@ defmodule MiniModules.UniversalModules.YieldMachine do
       do: [{name, statement}]
 
     defp from_statement(_), do: []
+
+    def register_component(%Context{} = context, identifier, component) do
+      put_in(context.components[identifier], component)
+    end
   end
 
   def interpret_machine(module_body) do
@@ -39,11 +43,9 @@ defmodule MiniModules.UniversalModules.YieldMachine do
 
   defp evaluate([{:comment, _} | statements], context), do: evaluate(statements, context)
 
-  defp evaluate([{:generator_function, name, _args, body} = component | statements], context) do
-    evaluate(statements, %Context{
-      context
-      | components: Map.put(context.components, name, component)
-    })
+  defp evaluate([{:generator_function, name, _args, _body} = component | statements], context) do
+    context = context |> Context.register_component(name, component)
+    evaluate(statements, context)
   end
 
   defp evaluate([{:yield, {:call, {:ref, "on"}, args}} | statements], context) do

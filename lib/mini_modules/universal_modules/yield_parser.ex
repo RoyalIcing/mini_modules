@@ -1,6 +1,6 @@
 defmodule MiniModules.UniversalModules.YieldParser do
   defmodule Context do
-    defstruct reply: nil, constants: %{}, components: %{}
+    defstruct reply: nil, components: %{}, constants: %{}
 
     def from_module(module_body) do
       components =
@@ -13,6 +13,10 @@ defmodule MiniModules.UniversalModules.YieldParser do
       do: [{name, statement}]
 
     defp from_statement(_), do: []
+
+    def assign_constant(%Context{} = context, identifier, value) do
+      put_in(context.constants[identifier], value)
+    end
   end
 
   def run_parser(module_body, input) do
@@ -46,7 +50,8 @@ defmodule MiniModules.UniversalModules.YieldParser do
     end
   end
 
-  defp evaluate([{:comment, _} | statements], rest, context), do: evaluate(statements, rest, context)
+  defp evaluate([{:comment, _} | statements], rest, context),
+    do: evaluate(statements, rest, context)
 
   defp evaluate([{:yield, value} | statements], rest, context) when is_binary(value) do
     size = byte_size(value)
@@ -104,10 +109,7 @@ defmodule MiniModules.UniversalModules.YieldParser do
        )
        when is_binary(identifier) do
     with {:ok, match, rest} <- regex(regex_source, rest) do
-      evaluate(statements, rest, %Context{
-        context
-        | constants: Map.put(context.constants, identifier, match)
-      })
+      evaluate(statements, rest, Context.assign_constant(context, identifier, match))
     else
       _ -> {:error, {:did_not_match, {:regex, regex_source}, %{rest: rest}}}
     end
@@ -123,10 +125,7 @@ defmodule MiniModules.UniversalModules.YieldParser do
 
     case evaluate(body, rest, context) do
       {:ok, value, %{rest: rest}} ->
-        evaluate(statements, rest, %Context{
-          context
-          | constants: Map.put(context.constants, identifier, value)
-        })
+        evaluate(statements, rest, Context.assign_constant(context, identifier, value))
 
       {:error, _reason} = tuple ->
         tuple
