@@ -11,20 +11,21 @@ defmodule MiniModulesWeb.EditorLive do
     <.form
       for={:editor}
       id="editor-form"
-      class="space-y-8"
+      class="flex gap-4"
       phx-change="changed">
-      <textarea name="input" rows={10} class="w-full text-black"><%= @input %></textarea>
+      <textarea name="input" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>
+
+      <section class="block w-1/2 space-y-4">
+        <%= if @error_message do %>
+        <div role="alert" class="p-4 text-red-300">
+          <%= @error_message %>
+        </div>
+        <% end %>
+
+        <output class="block"><%= @result %></output>
+      </section>
     </.form>
 
-    <%= if @error_message do %>
-    <div role="alert" class="p-4 text-red-300">
-      <%= @error_message %>
-    </div>
-    <% end %>
-
-    <section>
-      <output class="block"><%= @result %></output>
-    </section>
     """
   end
 

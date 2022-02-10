@@ -391,7 +391,7 @@ defmodule MiniModules.UniversalModules.Parser do
 
     defp decode([], <<?[, rest::bitstring>>), do: decode({:array, []}, rest)
 
-    defp decode({:array, items}, <<" ", rest::bitstring>>) do
+    defp decode({:array, items}, <<char::utf8, rest::bitstring>>) when is_whitespace(char) do
       decode({:array, items}, rest)
     end
 
@@ -422,6 +422,9 @@ defmodule MiniModules.UniversalModules.Parser do
 
     defp decode(expression, <<",", rest::bitstring>>),
       do: {:hit_comma, expression, rest}
+
+    defp decode(expression, <<"\n", rest::bitstring>>),
+      do: decode(expression, rest)
 
     defp decode(expression, <<"]", rest::bitstring>>),
       do: {:end_array, expression, rest}
