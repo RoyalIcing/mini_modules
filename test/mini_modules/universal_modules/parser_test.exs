@@ -3,6 +3,8 @@ defmodule MiniModules.ParserTest do
 
   alias MiniModules.UniversalModules.Parser
 
+  @moduletag timeout: 1000
+
   doctest Parser
 
   describe "decode/1" do
@@ -217,6 +219,37 @@ defmodule MiniModules.ParserTest do
       assert Parser.decode("""
              const key = Symbol("special");
              """) == {:ok, [{:const, "key", {:symbol, "special"}}]}
+    end
+
+    test "yieldmachine definition" do
+      assert Parser.decode(~S"""
+             export function Switch() {
+               function* OFF() {
+                 yield on("FLICK", ON);
+               }
+               function* ON() {
+                 yield on("FLICK", OFF);
+               }
+
+               return OFF;
+             }
+             """) ==
+               {:ok,
+                [
+                  export:
+                    {:function, "Switch", [],
+                     [
+                       {:generator_function, "OFF", [],
+                        [
+                          yield: {:call, {:ref, "on"}, ["FLICK", {:ref, "ON"}]}
+                        ]},
+                       {:generator_function, "ON", [],
+                        [
+                          yield: {:call, {:ref, "on"}, ["FLICK", {:ref, "OFF"}]}
+                        ]},
+                       {:return, {:ref, "OFF"}}
+                     ]}
+                ]}
     end
   end
 end

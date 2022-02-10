@@ -182,6 +182,16 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
+    defp decode(%{body: {:open, body_items}} = context, <<"function", _::bitstring>> = input) do
+      case decode(input) do
+        {:ok, term, rest} ->
+          decode(%{context | body: {:open, [term | body_items]}}, rest)
+
+        {:error, reason} ->
+          {:error, {reason, body_items}}
+      end
+    end
+
     defp decode(%{name: nil, args: nil} = context, <<char::utf8, rest::bitstring>>),
       do: decode(%{context | name: [char]}, rest)
 
@@ -420,14 +430,13 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
-    defp decode(expression, <<",", rest::bitstring>>),
-      do: {:hit_comma, expression, rest}
+    defp decode(expression, <<",", rest::bitstring>>), do: {:hit_comma, expression, rest}
 
-    defp decode(expression, <<"\n", rest::bitstring>>),
-      do: decode(expression, rest)
+    defp decode(expression, <<"\n", rest::bitstring>>), do: decode(expression, rest)
 
-    defp decode(expression, <<"]", rest::bitstring>>),
-      do: {:end_array, expression, rest}
+    defp decode(expression, <<"]", rest::bitstring>>), do: {:end_array, expression, rest}
+
+    defp decode(expression, <<")", rest::bitstring>>), do: {:end_param, expression, rest}
 
     # TODO: parse JSON by finding the end character followed by a semicolon + newline.
     # JSON strings cannoc contain literal newlines (it’s considered to be a control character),
@@ -467,7 +476,7 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
-    defp decode([], <<char::utf8, rest::bitstring>> = input) when is_lower(char) or is_upper(char) do
+    defp decode([], <<char::utf8, _::bitstring>> = input) when is_lower(char) or is_upper(char) do
       case compose(Identifier, input) do
         {:ok, identifier, rest} ->
           decode({:ref, identifier}, rest)
@@ -491,6 +500,33 @@ defmodule MiniModules.UniversalModules.Parser do
       regex_source = String.trim(regex_source, "/")
 
       {:ok, {:regex, regex_source}, rest}
+    end
+
+    defp decode({:ref, _} = called, <<"(", rest::bitstring>>), do: call(called, [], rest)
+
+    defp call(called, args, <<char::utf8, rest::bitstring>>) when is_whitespace(char),
+      do: call(called, args, rest)
+
+    defp call(called, args, <<",", rest::bitstring>>), do: call(called, args, rest)
+
+    defp call(called, args, <<?), rest::bitstring>>) do
+      {:ok, {:call, called, args |> Enum.reverse()}, rest}
+    end
+
+    defp call(called, args, input) do
+      case decode([], input) do
+        {:ok, value, rest} ->
+          call(called, [value | args], rest)
+
+        {:hit_comma, value, rest} ->
+          call(called, [value | args], rest)
+
+        {:end_param, value, rest} ->
+          {:ok, {:call, called, [value | args] |> Enum.reverse()}, rest}
+
+        {:error, error} ->
+          {:error, error}
+      end
     end
   end
 
