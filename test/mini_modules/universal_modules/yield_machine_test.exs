@@ -18,6 +18,7 @@ defmodule MiniModules.YieldMachineTest do
                    return OFF;
                  }
                  """)
+  @switch_expected_components [{"OFF", "FLICK", "ON"}, {"ON", "FLICK", "OFF"}]
 
   setup_all do
     {:ok, switch_module} = @switch_source
@@ -29,28 +30,29 @@ defmodule MiniModules.YieldMachineTest do
 
   describe "interpret_machine/1" do
     test "returns initial state", %{switch_module: switch_module} do
-      assert YieldMachine.interpret_machine(switch_module) == {:ok, %{state: "OFF"}}
+      assert YieldMachine.interpret_machine(switch_module) ==
+               {:ok, %{current: "OFF", components: @switch_expected_components}}
     end
   end
 
   describe "interpret_machine/2" do
     test "recognizes events", %{switch_module: switch_module} do
       assert YieldMachine.interpret_machine(switch_module, ["FLICK"]) ==
-               {:ok, %{state: "ON"}}
+               {:ok, %{current: "ON", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK"]) ==
-               {:ok, %{state: "OFF"}}
+               {:ok, %{current: "OFF", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK", "FLICK"]) ==
-               {:ok, %{state: "ON"}}
+               {:ok, %{current: "ON", components: @switch_expected_components}}
     end
 
     test "ignores unknown events", %{switch_module: switch_module} do
       assert YieldMachine.interpret_machine(switch_module, ["BLAH"]) ==
-               {:ok, %{state: "OFF"}}
+               {:ok, %{current: "OFF", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, ["BLAH", "FLICK"]) ==
-               {:ok, %{state: "ON"}}
+               {:ok, %{current: "ON", components: @switch_expected_components}}
 
       assert YieldMachine.interpret_machine(switch_module, [
                "BLAH",
@@ -58,7 +60,7 @@ defmodule MiniModules.YieldMachineTest do
                "FOO",
                "BLAH",
                "FLICK"
-             ]) == {:ok, %{state: "OFF"}}
+             ]) == {:ok, %{current: "OFF", components: @switch_expected_components}}
     end
   end
 end
