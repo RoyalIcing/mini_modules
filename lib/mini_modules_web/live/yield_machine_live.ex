@@ -39,7 +39,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       try do
         UniversalModules.Parser.decode(source)
       rescue
-        _ -> {:error, :rescue}
+        _ -> {:error, :invalid_module}
       catch
         _ -> {:error, :catch}
       end
@@ -84,7 +84,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
         return OFF;
        }
-       """, "")
+       """, "FLICK\nFLICK\nFLICK")
      )}
   end
 

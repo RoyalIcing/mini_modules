@@ -22,20 +22,37 @@ defmodule MiniModules.UniversalModules.YieldMachine do
   defmodule ComponentHandlers do
     defstruct event_handlers: %{}
 
-    def from_function_body(statements) do
-      from_statement(%__MODULE__{}, statements)
+    def from_function_body(statements, %Context{} = context) do
+      from_statement(%__MODULE__{}, statements, context)
     end
 
-    defp from_statement(%__MODULE__{} = handlers, []), do: handlers
+    defp from_statement(%__MODULE__{} = handlers, [], %Context{}), do: {:ok, handlers}
 
-    defp from_statement(%__MODULE__{} = handlers, [{:yield, {:call, {:ref, "on"}, [event_name, {:ref, component_name}]}} | statements]) do
+    defp from_statement(
+           %__MODULE__{} = handlers,
+           [
+             {:yield, {:call, {:ref, "on"}, [event_name, {:ref, component_name}]}} | statements
+           ],
+           %Context{} = context
+         )
+         when is_map_key(context.components, component_name) do
       handlers = put_in(handlers.event_handlers[event_name], component_name)
-      from_statement(handlers, statements)
+      from_statement(handlers, statements, context)
     end
 
-    defp from_statement(%__MODULE__{} = handlers, [_ | statements]), do: from_statement(handlers, statements)
+    defp from_statement(
+           %__MODULE__{},
+           [{:yield, {:call, {:ref, "on"}, on_args}} | _statements],
+           %Context{}
+         ) do
+      {:error, {:invalid_on, on_args}}
+    end
 
-    def target_for_event(%__MODULE__{} = handlers, event_name), do: handlers.event_handlers[event_name]
+    defp from_statement(%__MODULE__{} = handlers, [_ | statements], %Context{} = context),
+      do: from_statement(handlers, statements, context)
+
+    def target_for_event(%__MODULE__{} = handlers, event_name),
+      do: handlers.event_handlers[event_name]
   end
 
   def interpret_machine(module_body, events \\ []) do
@@ -44,6 +61,7 @@ defmodule MiniModules.UniversalModules.YieldMachine do
     results = for statement <- module_body, result <- interpret(statement, context), do: result
 
     case results do
+      [{:error, _} = error] -> error
       [result] -> result |> apply_events(events)
       [] -> {:error, :expected_exported_function}
       results -> {:error, {:too_many_exports, results}}
@@ -75,9 +93,13 @@ defmodule MiniModules.UniversalModules.YieldMachine do
     return(value, context)
   end
 
-  defp return({:ref, identifier}, context) do
-    # actual_value = Map.get(context.constants, identifier)
-    {:ok, %{state: identifier}, context}
+  defp return({:ref, component_name}, context)
+       when is_map_key(context.components, component_name) do
+    {:ok, %{state: component_name}, context}
+  end
+
+  defp return({:ref, _}, _context) do
+    {:error, :unknown_initial_component}
   end
 
   defp return(_value, _context) do
@@ -88,16 +110,23 @@ defmodule MiniModules.UniversalModules.YieldMachine do
     {:ok, result}
   end
 
-  def apply_events({:ok, %{state: current_state}, %Context{} = context} = current, [event_name | events]) when is_binary(event_name) do
+  def apply_events({:ok, %{state: current_state}, %Context{} = context} = current, [
+        event_name | events
+      ])
+      when is_binary(event_name) do
     {:generator_function, _name, _args, body} = context.components[current_state]
-    handlers = ComponentHandlers.from_function_body(body)
 
-    case ComponentHandlers.target_for_event(handlers, event_name) do
-      nil ->
-        apply_events(current, events)
+    with(
+      {:ok, handlers} <- ComponentHandlers.from_function_body(body, context)
+    ) do
+      case ComponentHandlers.target_for_event(handlers, event_name) do
+        nil ->
+          apply_events(current, events)
 
-      new_state ->
-        apply_events({:ok, %{state: new_state}, context}, events)
+        new_state ->
+          apply_events({:ok, %{state: new_state}, context}, events)
+      end
     end
+
   end
 end
