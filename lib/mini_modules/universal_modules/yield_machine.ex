@@ -62,7 +62,7 @@ defmodule MiniModules.UniversalModules.YieldMachine do
 
     case results do
       [{:error, _} = error] -> error
-      [result] -> result |> apply_events(events)
+      [{:ok, state, context}] -> apply_events(state, context, events)
       [] -> {:error, :expected_exported_function}
       results -> {:error, {:too_many_exports, results}}
     end
@@ -95,7 +95,7 @@ defmodule MiniModules.UniversalModules.YieldMachine do
 
   defp return({:ref, component_name}, context)
        when is_map_key(context.components, component_name) do
-    {:ok, %{state: component_name}, context}
+    {:ok, %{current: component_name}, context}
   end
 
   defp return({:ref, _}, _context) do
@@ -106,27 +106,35 @@ defmodule MiniModules.UniversalModules.YieldMachine do
     {:error, :invalid_return_value}
   end
 
-  def apply_events({:ok, %{state: _current_state} = result, _context}, []) do
-    {:ok, result}
+  def apply_events(%{current: current}, context, []) do
+    {:ok, %{current: current, components: list_components(context)}}
   end
 
-  def apply_events({:ok, %{state: current_state}, %Context{} = context} = current, [
+  def apply_events(%{current: current_state} = state, %Context{} = context, [
         event_name | events
       ])
       when is_binary(event_name) do
     {:generator_function, _name, _args, body} = context.components[current_state]
 
-    with(
-      {:ok, handlers} <- ComponentHandlers.from_function_body(body, context)
-    ) do
+    with({:ok, handlers} <- ComponentHandlers.from_function_body(body, context)) do
       case ComponentHandlers.target_for_event(handlers, event_name) do
         nil ->
-          apply_events(current, events)
+          apply_events(state, context, events)
 
         new_state ->
-          apply_events({:ok, %{state: new_state}, context}, events)
+          apply_events(%{current: new_state}, context, events)
       end
     end
+  end
 
+  defp list_components(%Context{} = context) do
+    for {_, {_, from, _, body}} <- context.components,
+        statement <- body,
+        result <-
+          (fn
+             {:yield, {:call, {:ref, "on"}, [event_name, {:ref, to}]}} -> [{from, event_name, to}]
+             _ -> []
+           end).(statement),
+        do: result
   end
 end

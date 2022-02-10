@@ -22,11 +22,21 @@ defmodule MiniModulesWeb.YieldMachineLive do
           </div>
         <% end %>
         <%= if @state do %>
-          <output class="block"><%= inspect(@state) %></output>
+          <output class="block text-center">Currently <%= @state %></output>
         <% end %>
+        <mermaid-image source={render_mermaid(@state, @components)} class="block bg-white text-center">
+        </mermaid-image>
       </section>
     </.form>
 
+    """
+  end
+
+  defp render_mermaid(state, components) do
+    """
+    graph TB
+    #{for {from, event, to} <- components, do: "#{from}-->|#{event}|#{to}\n"}
+    style #{state} fill:#222,color:#ffde00
     """
   end
 
@@ -42,26 +52,27 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
     events = String.split(event_lines, [" ", "\n", "\r"], trim: true)
 
-    {state, error_message} =
+    {state, components, error_message} =
       case decoded do
         {:ok, elements} ->
           case UniversalModules.YieldMachine.interpret_machine(elements, events) do
-            {:ok, %{state: state}} ->
-              {state, nil}
+            {:ok, %{current: state, components: components}} ->
+              {state, components, nil}
 
             {:error, reason} ->
-              {nil, inspect(reason)}
+              {nil, nil, inspect(reason)}
           end
 
         {:error, reason} ->
-          {nil, inspect(reason)}
+          {nil, nil, inspect(reason)}
       end
 
     %{
       source: source,
       state: state,
       event_lines: event_lines,
-      error_message: error_message
+      error_message: error_message,
+      components: components
     }
   end
 
