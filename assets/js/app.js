@@ -51,13 +51,11 @@ function loadMermaid() {
     const script = document.createElement('script');
     script.id = 'mermaid-js';
     script.defer = true;
-    script.type = "module";
+    script.type = 'module';
     script.innerHTML = `
         import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@8.13.10/dist/mermaid.esm.min.mjs";
         window.mermaidDidLoad(mermaid);
     `;
-    // script.src = "https://cdn.jsdelivr.net/npm/mermaid@8.13.10/dist/mermaid.esm.min.mjs";
-    // script.onload = window.mermaidDidLoad;
     document.body.appendChild(script);
     return mermaidLoadPromise;
 }

@@ -22,10 +22,10 @@ defmodule MiniModulesWeb.YieldMachineLive do
           </div>
         <% end %>
         <%= if @state do %>
-          <output class="block text-center">Currently <%= @state %></output>
+          <output class="block text-center">Currently <strong><%= @state %></strong></output>
+          <mermaid-image source={render_mermaid(@state, @components)} class="block bg-white text-center">
+          </mermaid-image>
         <% end %>
-        <mermaid-image source={render_mermaid(@state, @components)} class="block bg-white text-center">
-        </mermaid-image>
       </section>
     </.form>
 
@@ -82,15 +82,15 @@ defmodule MiniModulesWeb.YieldMachineLive do
        socket,
        process(~S"""
        export function Switch() {
-        function* OFF() {
-          yield on("FLICK", ON);
+        function* Off() {
+          yield on("FLICK", On);
         }
-        function* ON() {
-          yield on("FLICK", OFF);
+        function* On() {
+          yield on("FLICK", Off);
         }
 
-        return OFF;
-       }
+        return Off;
+      }
        """, "FLICK\nFLICK\nFLICK")
      )}
   end
