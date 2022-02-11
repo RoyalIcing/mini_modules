@@ -22,7 +22,7 @@ defmodule MiniModulesWeb.EditorLive do
         </div>
         <% end %>
 
-        <output class="block"><%= @result %></output>
+        <output class="block p-4 bg-green-900/25 text-white border border-green-800"><%= @result %></output>
       </section>
     </.form>
 

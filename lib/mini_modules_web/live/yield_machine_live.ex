@@ -80,18 +80,21 @@ defmodule MiniModulesWeb.YieldMachineLive do
     {:ok,
      assign(
        socket,
-       process(~S"""
-       export function Switch() {
-        function* Off() {
-          yield on("FLICK", On);
-        }
-        function* On() {
-          yield on("FLICK", Off);
-        }
+       process(
+         ~S"""
+         export function Switch() {
+          function* Off() {
+            yield on("FLICK", On);
+          }
+          function* On() {
+            yield on("FLICK", Off);
+          }
 
-        return Off;
-      }
-       """, "FLICK\nFLICK\nFLICK")
+          return Off;
+         }
+         """,
+         "FLICK\nFLICK\nFLICK"
+       )
      )}
   end
 
