@@ -37,7 +37,7 @@ defmodule MiniModules.YieldMachineTest do
                           }
                           """)
   @advanced_switch_expected_components [
-    {"FLICK_CIRCUIT_BREAKER", "RestoreCircuitBreaker", "Off"},
+    {"CircuitBreakerTripped", "FLICK_CIRCUIT_BREAKER", "Off"},
     {"Off", "FLICK", "On"},
     {"On", "FLICK", "Off"},
     {"On", "SHORT", "CircuitBreakerTripped"}
