@@ -225,11 +225,13 @@ defmodule MiniModules.ParserTest do
       assert Parser.decode("""
              import { a } from "https://first.org";
              import { a, b } from "https://second.org";
+             import * as foo from "https://third.org";
              """) ==
                {:ok,
                 [
                   {:import, ["a"], {:url, "https://first.org"}},
-                  {:import, ["a", "b"], {:url, "https://second.org"}}
+                  {:import, ["a", "b"], {:url, "https://second.org"}},
+                  {:import, {:alias, "foo"}, {:url, "https://third.org"}},
                 ]}
     end
 

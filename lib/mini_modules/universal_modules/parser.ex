@@ -119,6 +119,22 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode(context, <<" ", rest::bitstring>>),
       do: decode(context, rest)
 
+    defp decode(:expect_opening_curly, <<"*", rest::bitstring>>),
+      do: decode(:star_expect_as, rest)
+
+    defp decode(:star_expect_as, <<"as ", rest::bitstring>>),
+      do: decode(:star_expect_name, rest)
+
+    defp decode(:star_expect_name, input) do
+      case compose(Identifier, input) do
+        {:ok, identifier, rest} ->
+          decode({:expect_from, {:alias, identifier}}, rest)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+
     defp decode(:expect_opening_curly, <<"{", rest::bitstring>>),
       do: decode({:expect_names, []}, rest)
 
