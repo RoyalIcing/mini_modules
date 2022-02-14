@@ -68,8 +68,22 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
+    def decode(<<"import ", _::bitstring>> = input, result) do
+      case compose(Import, input) do
+        {:ok, term, rest} ->
+          decode(rest, [term | result])
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+
+    def decode("", result) do
+      {:error, {:unexpected_eof, result}}
+    end
+
     def decode(input, result) do
-      {:error, {:unexpected_eof, input, result}}
+      {:error, {:invalid_input, input, result}}
     end
   end
 
@@ -94,6 +108,56 @@ defmodule MiniModules.UniversalModules.Parser do
       #     {:error, reason}
       # end
     end
+  end
+
+  defmodule Import do
+    defdelegate compose(submodule, input), to: MiniModules.UniversalModules.Parser
+
+    def decode(<<"import ", rest::bitstring>>),
+      do: decode(:expect_opening_curly, rest)
+
+    defp decode(context, <<" ", rest::bitstring>>),
+      do: decode(context, rest)
+
+    defp decode(:expect_opening_curly, <<"{", rest::bitstring>>),
+      do: decode({:expect_names, []}, rest)
+
+    defp decode({:expect_names, names}, <<"}", rest::bitstring>>) do
+      names = Enum.reverse(names)
+      decode({:expect_from, names}, rest)
+    end
+
+    defp decode({:expect_names, names}, <<",", rest::bitstring>>),
+      do: decode({:expect_names, names}, rest)
+
+    defp decode({:expect_names, names}, input) do
+      case compose(Identifier, input) do
+        {:ok, identifier, rest} ->
+          decode({:expect_names, [identifier | names]}, rest)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+
+    defp decode({:expect_from, names}, <<"from ", rest::bitstring>>),
+      do: decode({:expect_source, names}, rest)
+
+    defp decode({:expect_source, names}, <<?", _::bitstring>> = input) do
+      case compose(Expression, input) do
+        {:ok, value, rest} ->
+          decode({:expect_end, names, {:url, value}}, rest)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+
+    defp decode({:expect_end, names, source}, <<?;, rest::bitstring>>),
+      do: {:ok, {:import, names, source}, rest}
+
+    defp decode(context, input),
+      do: {:error, {:unexpected_input, context, input}}
   end
 
   defmodule Function do
@@ -319,6 +383,10 @@ defmodule MiniModules.UniversalModules.Parser do
     defdelegate compose(submodule, input), to: MiniModules.UniversalModules.Parser
 
     def decode(input), do: decode([], input)
+
+    # def decode({:string, <<?", _::bitstring>> = input}) do
+    #   decode([], input)
+    # end
 
     defp decode(expression, <<";", rest::bitstring>>),
       do: {:ok, expression, rest}

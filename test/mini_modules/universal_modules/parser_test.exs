@@ -221,6 +221,18 @@ defmodule MiniModules.ParserTest do
              """) == {:ok, [{:const, "key", {:symbol, "special"}}]}
     end
 
+    test "import names" do
+      assert Parser.decode("""
+             import { a } from "https://first.org";
+             import { a, b } from "https://second.org";
+             """) ==
+               {:ok,
+                [
+                  {:import, ["a"], {:url, "https://first.org"}},
+                  {:import, ["a", "b"], {:url, "https://second.org"}}
+                ]}
+    end
+
     test "yieldmachine definition" do
       assert Parser.decode(~S"""
              export function Switch() {
