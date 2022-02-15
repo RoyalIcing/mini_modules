@@ -88,26 +88,58 @@ defmodule MiniModules.UniversalModules.Parser do
   end
 
   defmodule Export do
-    def decode(<<"export ", rest::bitstring>>) do
+    defdelegate compose(submodule, input), to: MiniModules.UniversalModules.Parser
+
+    def decode(<<"export ", rest::bitstring>>),
+      do: decode(:expect_subject, rest)
+
+    defp decode(context, <<" ", rest::bitstring>>),
+      do: decode(context, rest)
+
+    defp decode(:expect_subject, <<"{", rest::bitstring>>),
+      do: decode({:expect_names, []}, rest)
+
+    defp decode(:expect_subject, input) do
       with(
-        {:error, :expected_const} <- MiniModules.UniversalModules.Parser.compose(Const, rest),
+        {:error, :expected_const} <- MiniModules.UniversalModules.Parser.compose(Const, input),
         {:error, :expected_function} <-
-          MiniModules.UniversalModules.Parser.compose(Function, rest)
+          MiniModules.UniversalModules.Parser.compose(Function, input)
       ) do
         {:error, :expected_const_or_function}
       else
         {:ok, term, rest} ->
           {:ok, {:export, term}, rest}
       end
-
-      # case MiniModules.UniversalModules.Parser.compose(Const, rest) do
-      #   {:ok, term, rest} ->
-      #     {:ok, {:export, term}, rest}
-
-      #   {:error, reason} ->
-      #     {:error, reason}
-      # end
     end
+
+    defp decode({:expect_names, names}, <<"}", rest::bitstring>>) do
+      names = Enum.reverse(names)
+      decode({:expect_from_or_end, names}, rest)
+    end
+
+    defp decode({:expect_names, names}, <<",", rest::bitstring>>),
+      do: decode({:expect_names, names}, rest)
+
+    defp decode({:expect_names, names}, input) do
+      case compose(Identifier, input) do
+        {:ok, identifier, rest} ->
+          decode({:expect_names, [{:ref, identifier} | names]}, rest)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+
+    defp decode({:expect_from_or_end, names}, <<";", rest::bitstring>>),
+      do: {:ok, {:export, names}, rest}
+
+    # case MiniModules.UniversalModules.Parser.compose(Const, rest) do
+    #   {:ok, term, rest} ->
+    #     {:ok, {:export, term}, rest}
+
+    #   {:error, reason} ->
+    #     {:error, reason}
+    # end
   end
 
   defmodule Import do

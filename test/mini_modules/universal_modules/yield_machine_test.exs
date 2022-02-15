@@ -3,6 +3,7 @@ defmodule MiniModules.YieldMachineTest do
 
   alias MiniModules.UniversalModules.YieldMachine
   alias MiniModules.UniversalModules.Parser
+  alias MiniModules.UniversalModules.ImportResolver
 
   doctest YieldMachine
 
@@ -42,6 +43,19 @@ defmodule MiniModules.YieldMachineTest do
     {"On", "FLICK", "Off"},
     {"On", "SHORT", "CircuitBreakerTripped"}
   ]
+
+  # @imported_switch_source with(
+  #                           {:ok, result} <-
+  #                             Parser.decode(~S"""
+  #                             import { Switch } from "https://example.org/switch-machine.js";
+  #                             export { Switch };
+  #                             """),
+  #                           do:
+  #                             ImportResolver.transform(result, fn
+  #                               "https://example.org/switch-machine.js" -> @switch_source
+  #                               _ -> :error
+  #                             end)
+  #                         )
 
   setup_all do
     {:ok, switch_module} = @switch_source

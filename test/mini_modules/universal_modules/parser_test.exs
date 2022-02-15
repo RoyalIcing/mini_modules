@@ -231,7 +231,23 @@ defmodule MiniModules.ParserTest do
                 [
                   {:import, ["a"], {:url, "https://first.org"}},
                   {:import, ["a", "b"], {:url, "https://second.org"}},
-                  {:import, {:alias, "foo"}, {:url, "https://third.org"}},
+                  {:import, {:alias, "foo"}, {:url, "https://third.org"}}
+                ]}
+    end
+
+    test "import then export" do
+      assert Parser.decode("""
+             import { Switch } from "https://example.org/switch-machine.js";
+             export { Switch };
+             """) ==
+               {:ok,
+                [
+                  {
+                    :import,
+                    ["Switch"],
+                    {:url, "https://example.org/switch-machine.js"}
+                  },
+                  {:export, [ref: "Switch"]}
                 ]}
     end
 
