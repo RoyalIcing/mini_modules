@@ -38,6 +38,13 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
+    def decode(<<"/*", _::bitstring>> = input, result) do
+      case compose(MultilineComment, input) do
+        {:ok, term, rest} ->
+          decode(rest, [term | result])
+      end
+    end
+
     def decode(<<"const ", _::bitstring>> = input, result) do
       case compose(Const, input) do
         {:ok, term, rest} ->
@@ -317,6 +324,14 @@ defmodule MiniModules.UniversalModules.Parser do
     def decode(<<"//", input::bitstring>>) do
       [comment, rest] = String.split(input, "\n", parts: 2)
       {:ok, {:comment, comment}, rest}
+    end
+  end
+
+  defmodule MultilineComment do
+    def decode(<<"/*", input::bitstring>>) do
+      [comment, rest] = String.split(input, "*/", parts: 2)
+      lines = String.split(comment, "\n")
+      {:ok, {:comment, lines}, rest}
     end
   end
 

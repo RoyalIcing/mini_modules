@@ -47,6 +47,8 @@ defmodule MiniModules.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
       {:unicode_guards, "~> 1.0"},
+      {:castore, "~> 0.1.0"},
+      {:mint, "~> 1.0"},
       {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
       {:heroicons, "~> 0.3.0"},
       {:benchee, "~> 1.0", only: [:dev, :test]}

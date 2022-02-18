@@ -25,6 +25,22 @@ defmodule MiniModules.ParserTest do
                 ]}
     end
 
+    test "multiline comment" do
+      assert Parser.decode("""
+             /* First */
+
+             /**
+             * Multiple
+             * lines
+             */
+             """) ==
+               {:ok,
+                [
+                  {:comment, [" First "]},
+                  {:comment, ["*", "* Multiple", "* lines", ""]}
+                ]}
+    end
+
     test "const true" do
       assert Parser.decode("""
              const isEnabled = true;

@@ -34,7 +34,7 @@ defmodule MiniModules.ImportResolverTest do
   end
 
   describe "transform/2" do
-    test "uses callback", %{
+    test "uses result of callback to create a new module", %{
       const_module: const_module,
       switch_module: switch_module
     } do
@@ -42,6 +42,9 @@ defmodule MiniModules.ImportResolverTest do
         Parser.decode(~S"""
         import { pi } from "https://example.org/const.js";
         import { Switch } from "https://example.org/switch-machine.js";
+
+        const enabled = false;
+
         export { pi };
         export { Switch };
         """)
@@ -53,20 +56,21 @@ defmodule MiniModules.ImportResolverTest do
              end) ==
                {:ok,
                 [
-                  export: {:const, "pi", 3.14},
-                  export:
-                    {:function, "Switch", [],
-                     [
-                       {:generator_function, "Off", [],
-                        [
-                          yield: {:call, {:ref, "on"}, ["FLICK", {:ref, "On"}]}
-                        ]},
-                       {:generator_function, "On", [],
-                        [
-                          yield: {:call, {:ref, "on"}, ["FLICK", {:ref, "Off"}]}
-                        ]},
-                       {:return, {:ref, "Off"}}
-                     ]}
+                  {:const, "enabled", false},
+                  {:export, {:const, "pi", 3.14}},
+                  {:export,
+                   {:function, "Switch", [],
+                    [
+                      {:generator_function, "Off", [],
+                       [
+                         yield: {:call, {:ref, "on"}, ["FLICK", {:ref, "On"}]}
+                       ]},
+                      {:generator_function, "On", [],
+                       [
+                         yield: {:call, {:ref, "on"}, ["FLICK", {:ref, "Off"}]}
+                       ]},
+                      {:return, {:ref, "Off"}}
+                    ]}}
                 ]}
     end
   end
