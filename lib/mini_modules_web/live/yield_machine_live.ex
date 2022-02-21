@@ -131,18 +131,12 @@ defmodule MiniModulesWeb.YieldMachineLive do
        process(
          socket.assigns,
          ~S"""
-         export function Switch() {
-          function* Off() {
-            yield on("FLICK", On);
-          }
-          function* On() {
-            yield on("FLICK", Off);
-          }
+         import { TrafficLights } from "https://gist.githubusercontent.com/BurntCaramel/38fb200b9f32087e1d222b638b5957b2/raw";
 
-          return Off;
-         }
+         export { TrafficLights };
          """,
-         "FLICK\nFLICK\nFLICK"
+         "timer\ntimer\ntimer",
+         :load
        )
      )}
   end
