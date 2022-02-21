@@ -71,7 +71,13 @@ defmodule MiniModules.ImportResolverTest do
                        ]},
                       {:return, {:ref, "Off"}}
                     ]}}
-                ]}
+                ],
+                %{
+                  imported_modules: %{
+                    "https://example.org/const.js" => const_module,
+                    "https://example.org/switch-machine.js" => switch_module
+                  }
+                }}
     end
   end
 end

@@ -1,9 +1,18 @@
 defmodule MiniModulesWeb.YieldMachineLive do
   use MiniModulesWeb, {:live_view, container: {:div, []}}
 
+  alias Phoenix.LiveView.Socket
   alias MiniModules.UniversalModules
+  alias MiniModules.Fetch
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
+
+  # TODO:
+  # Allow timing events with integer events: e.g. "5" for 5 seconds passing
+  # Show 'Start' button that starts a timer.
+  # Each second the last line increments by 1 second.
+  # Pause to allow editing the events field.
+  # Clear the events field to start again.
 
   def render(assigns) do
     ~H"""
@@ -11,8 +20,16 @@ defmodule MiniModulesWeb.YieldMachineLive do
       for={:editor}
       id="editor-form"
       class="flex gap-4"
-      phx-change="changed">
-      <textarea name="source" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @source %></textarea>
+      phx-change="changed"
+      phx-submit="submit"
+    >
+      <textarea
+        name="source"
+        rows={16}
+        class="w-full font-mono bg-gray-800 text-white border border-gray-600"
+        phx-keyup="source_enter_key"
+        phx-key="Enter"
+      ><%= @source %></textarea>
 
       <section class="block w-1/2 space-y-4">
         <textarea name="event_lines" rows={10} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @event_lines %></textarea>
@@ -40,7 +57,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
     """
   end
 
-  defp process(source, event_lines) do
+  defp process(assigns, source, event_lines, load \\ nil) do
     decoded =
       try do
         UniversalModules.Parser.decode(source)
@@ -48,6 +65,36 @@ defmodule MiniModulesWeb.YieldMachineLive do
         _ -> {:error, :invalid_module}
       catch
         _ -> {:error, :catch}
+      end
+
+    {decoded, imported_modules} =
+      case decoded do
+        {:ok, module} ->
+          {:ok, module, %{imported_modules: imported_modules}} =
+            UniversalModules.ImportResolver.transform(module, fn url ->
+              # IO.puts("Fetching #{url}")
+              case {load, assigns[:imported_modules]} do
+                {_, %{^url => loaded_module}} when loaded_module != [] ->
+                  IO.puts("CACHE HIT #{url}")
+                  {:ok, loaded_module}
+
+                {:load, _} ->
+                  IO.puts("Loading #{url}")
+                  %{done: true, data: data} = Fetch.Get.load(url)
+                  # Process.sleep(1000)
+                  UniversalModules.Parser.decode(data)
+
+                {_, _} ->
+                  IO.puts("Not loading #{url}")
+                  {:ok, []}
+              end
+            end)
+
+          {{:ok, module}, imported_modules}
+
+        _ ->
+          imported_modules = assigns[:imported_modules] || %{}
+          {decoded, imported_modules}
       end
 
     events = String.split(event_lines, [" ", "\n", "\r"], trim: true)
@@ -72,7 +119,8 @@ defmodule MiniModulesWeb.YieldMachineLive do
       state: state,
       event_lines: event_lines,
       error_message: error_message,
-      components: components
+      components: components,
+      imported_modules: imported_modules
     }
   end
 
@@ -81,6 +129,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
      assign(
        socket,
        process(
+         socket.assigns,
          ~S"""
          export function Switch() {
           function* Off() {
@@ -99,6 +148,12 @@ defmodule MiniModulesWeb.YieldMachineLive do
   end
 
   def handle_event("changed", %{"source" => source, "event_lines" => event_lines}, socket) do
-    {:noreply, assign(socket, process(source, event_lines))}
+    IO.puts("changed")
+    {:noreply, assign(socket, process(socket.assigns, source, event_lines))}
+  end
+
+  def handle_event("source_enter_key", %{"value" => source}, socket) do
+    IO.puts("source_enter_key")
+    {:noreply, assign(socket, process(socket.assigns, source, socket.assigns.event_lines, :load))}
   end
 end

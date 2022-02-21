@@ -74,15 +74,18 @@ defmodule MiniModulesWeb.EditorLive do
     decoded =
       case {load, decoded} do
         {true, {:ok, module}} ->
-          UniversalModules.ImportResolver.transform(module, fn url ->
-            # TODO: add caching
-            %{done: true, data: data} = Fetch.Get.load(url)
-            # Process.sleep(1000)
-            UniversalModules.Parser.decode(data)
-            # {:ok, [
-            #   {:export, {:const, "b", 6}}
-            # ]}
-          end)
+          {:ok, module, _} =
+            UniversalModules.ImportResolver.transform(module, fn url ->
+              # TODO: add caching
+              %{done: true, data: data} = Fetch.Get.load(url)
+              # Process.sleep(1000)
+              UniversalModules.Parser.decode(data)
+              # {:ok, [
+              #   {:export, {:const, "b", 6}}
+              # ]}
+            end)
+
+          {:ok, module}
 
         _ ->
           decoded
