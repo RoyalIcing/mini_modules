@@ -42,16 +42,19 @@ defmodule MiniModules.ImportResolverTest do
         Parser.decode(~S"""
         import { pi } from "https://example.org/const.js";
         import { Switch } from "https://example.org/switch-machine.js";
+        import { NotLoaded } from "https://example.org/not-loaded.js";
 
         const enabled = false;
 
         export { pi };
         export { Switch };
+        export { NotLoaded };
         """)
 
       assert ImportResolver.transform(result, fn
                "https://example.org/const.js" -> {:ok, const_module}
                "https://example.org/switch-machine.js" -> {:ok, switch_module}
+               "https://example.org/not-loaded.js" -> {:ok, nil}
                _ -> :error
              end) ==
                {:ok,
@@ -70,7 +73,8 @@ defmodule MiniModules.ImportResolverTest do
                          yield: {:call, {:ref, "on"}, ["FLICK", {:ref, "Off"}]}
                        ]},
                       {:return, {:ref, "Off"}}
-                    ]}}
+                    ]}},
+                  {:export, [{:ref, "NotLoaded"}]},
                 ],
                 %{
                   imported_modules: %{

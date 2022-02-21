@@ -8,7 +8,7 @@ defmodule MiniModules.UniversalModules.ImportResolver do
 
       imported_modules =
         Map.new(
-          for source <- import_sources, {:ok, result} = loader.(source), do: {source, result}
+          for source <- import_sources, {:ok, result} = loader.(source), result != nil, do: {source, result}
         )
 
       imported_identifiers =

@@ -74,7 +74,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
             UniversalModules.ImportResolver.transform(module, fn url ->
               # IO.puts("Fetching #{url}")
               case {load, assigns[:imported_modules]} do
-                {_, %{^url => loaded_module}} when loaded_module != [] ->
+                {_, %{^url => loaded_module}} ->
                   IO.puts("CACHE HIT #{url}")
                   {:ok, loaded_module}
 
@@ -86,7 +86,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
                 {_, _} ->
                   IO.puts("Not loading #{url}")
-                  {:ok, []}
+                  {:ok, nil}
               end
             end)
 
