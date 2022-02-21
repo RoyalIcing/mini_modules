@@ -19,7 +19,6 @@ defmodule MiniModulesWeb.Router do
 
     get "/", PageController, :index
 
-    get "/universal-modules", UniversalModulesController, :index
     get "/editor", EditorController, :index
     live "/yieldparser", YieldParserLive, :index
     live "/yieldmachine", YieldMachineLive, :index
