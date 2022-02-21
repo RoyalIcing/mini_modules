@@ -72,20 +72,18 @@ defmodule MiniModulesWeb.YieldMachineLive do
         {:ok, module} ->
           {:ok, module, %{imported_modules: imported_modules}} =
             UniversalModules.ImportResolver.transform(module, fn url ->
-              # IO.puts("Fetching #{url}")
               case {load, assigns[:imported_modules]} do
+                # Use previously loaded module.
                 {_, %{^url => loaded_module}} ->
-                  IO.puts("CACHE HIT #{url}")
                   {:ok, loaded_module}
 
+                # Otherwise, load if we are being asked to.
                 {:load, _} ->
-                  IO.puts("Loading #{url}")
                   %{done: true, data: data} = Fetch.Get.load(url)
-                  # Process.sleep(1000)
                   UniversalModules.Parser.decode(data)
 
+                # Otherwise, returning nothing.
                 {_, _} ->
-                  IO.puts("Not loading #{url}")
                   {:ok, nil}
               end
             end)
