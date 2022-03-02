@@ -132,6 +132,30 @@ defmodule MiniModules.UniversalModules.YieldParser do
     end
   end
 
+  @suggestion_threshold 0.77
+
+  defp evaluate(
+         [{:const, _, {:yield, {:ref, component_name}}} | _],
+         _rest,
+         %Context{components: components}
+       ) do
+    candidates =
+      for {name, _} <- components,
+          score = String.jaro_distance(name, component_name),
+          score >= @suggestion_threshold,
+          do: {name, score}
+
+    suggestion =
+      with candidates when candidates != [] <- candidates,
+           {suggestion, _} <- Enum.max_by(candidates, fn {_, score} -> score end) do
+        suggestion
+      else
+        _ -> nil
+      end
+
+    {:error, {:component_not_found, component_name, %{did_you_mean: suggestion}}}
+  end
+
   # defp evaluate([{:const, [identifier], {:yield, yielded}} | statements], rest, _context)
   #      when is_binary(identifier) do
   #   {:error, {:did_not_match, identifier, %{rest: rest}}}
