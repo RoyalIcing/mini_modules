@@ -116,6 +116,19 @@ defmodule MiniModules.UniversalModules.YieldParser do
   end
 
   defp evaluate(
+         [{:const, identifier, {:yield, {:regex, regex_source}}} | statements],
+         rest,
+         context
+       )
+       when is_binary(identifier) do
+    with {:ok, match, rest} <- regex(regex_source, rest) do
+      evaluate(statements, rest, Context.assign_constant(context, [identifier], match))
+    else
+      _ -> {:error, {:did_not_match, {:regex, regex_source}, %{rest: rest}}}
+    end
+  end
+
+  defp evaluate(
          [{:const, identifier, {:yield, {:ref, component_name}}} | statements],
          rest,
          %Context{components: components} = context
@@ -154,6 +167,18 @@ defmodule MiniModules.UniversalModules.YieldParser do
       end
 
     {:error, {:component_not_found, component_name, %{did_you_mean: suggestion}}}
+  end
+
+  defp evaluate([{:const, identifier, {:yield, choices}} | statements], rest, context) when is_list(choices) do
+    Enum.reduce_while(choices, {:error, :no_choices}, fn choice, _fallback ->
+      case evaluate([{:const, identifier, {:yield, choice}} | statements], rest, context) do
+        success = {:ok, _, _} ->
+          {:halt, success}
+
+        {:error, {:did_not_match, _, _}} ->
+          {:cont, {:error, {:no_matching_choice, choices, %{rest: rest}}}}
+      end
+    end)
   end
 
   # defp evaluate([{:const, [identifier], {:yield, yielded}} | statements], rest, _context)
