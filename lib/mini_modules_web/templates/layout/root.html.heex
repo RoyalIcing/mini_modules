@@ -9,23 +9,19 @@
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
     <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
   </head>
-  <body class="bg-gray-900 text-white">
-    <header>
-      <section class="container">
-        <nav>
-          <ul class="flex flex-wrap p-4 gap-4">
-            <li><a href="/">Home</a></li>
-            <li><a href="/yieldparser">Yield Parser</a></li>
-            <li><a href="/yieldmachine">Yield Machine</a></li>
-            <li><a href="/live-editor">Live Editor</a></li>
-            <li><a href="/editor">Browser Editor</a></li>
-            <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
-              <li><%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home) %></li>
-            <% end %>
-          </ul>
-        </nav>
-      </section>
-    </header>
+  <body>
+    <nav class="bg-gray-900 text-white">
+      <ul class="flex flex-wrap p-4 gap-4">
+        <li><a href="/">Home</a></li>
+        <li><a href="/yieldparser">Yield Parser</a></li>
+        <li><a href="/yieldmachine">Yield Machine</a></li>
+        <li><a href="/live-editor">Live Editor</a></li>
+        <li><a href="/editor">Browser Editor</a></li>
+        <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
+          <li><%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home) %></li>
+        <% end %>
+      </ul>
+    </nav>
     <%= @inner_content %>
   </body>
 </html>
