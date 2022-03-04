@@ -2,7 +2,7 @@ defmodule MiniModulesWeb.YieldParserLive do
   use MiniModulesWeb, {:live_view, container: {:div, []}}
 
   alias MiniModules.UniversalModules
-  # alias MiniModules.UniversalModules.Parser, as: Parser
+  alias MiniModules.Fetch
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
@@ -13,7 +13,13 @@ defmodule MiniModulesWeb.YieldParserLive do
       id="editor-form"
       class="flex gap-4"
       phx-change="changed">
-      <textarea name="source" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @source %></textarea>
+      <textarea
+        name="source"
+        rows={16}
+        class="w-full font-mono bg-gray-800 text-white border border-gray-600"
+        phx-keyup="source_enter_key"
+        phx-key="Enter"
+      ><%= @source %></textarea>
 
       <section class="block w-1/2 space-y-4">
         <textarea name="input" rows={1} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>
@@ -35,7 +41,7 @@ defmodule MiniModulesWeb.YieldParserLive do
     """
   end
 
-  defp process(source, input) do
+  defp process(assigns, source, input, load \\ nil) do
     decoded =
       try do
         UniversalModules.Parser.decode(source)
@@ -44,6 +50,36 @@ defmodule MiniModulesWeb.YieldParserLive do
       catch
         _ -> {:error, :catch}
       end
+
+    {decoded, imported_modules} =
+      case decoded do
+        {:ok, module} ->
+          {:ok, module, %{imported_modules: imported_modules}} =
+            UniversalModules.ImportResolver.transform(module, fn url ->
+              case {load, assigns[:imported_modules]} do
+                # Use previously loaded module.
+                {_, %{^url => loaded_module}} ->
+                  {:ok, loaded_module}
+
+                # Otherwise, load if we are being asked to.
+                {:load, _} ->
+                  %{done: true, data: data} = Fetch.Get.load(url)
+                  UniversalModules.Parser.decode(data)
+
+                # Otherwise, returning nothing.
+                {_, _} ->
+                  {:ok, nil}
+              end
+            end)
+
+          {{:ok, module}, imported_modules}
+
+        _ ->
+          imported_modules = assigns[:imported_modules] || %{}
+          {decoded, imported_modules}
+      end
+
+    IO.inspect(decoded)
 
     # decoded = UniversalModules.Parser.decode(input)
     # identifiers = UniversalModules.Inspector.list_identifiers(elem(decoded, 1))
@@ -67,7 +103,8 @@ defmodule MiniModulesWeb.YieldParserLive do
       input: input,
       result: result,
       rest: rest,
-      error_message: error_message
+      error_message: error_message,
+      imported_modules: imported_modules
     }
   end
 
@@ -76,6 +113,7 @@ defmodule MiniModulesWeb.YieldParserLive do
      assign(
        socket,
        process(
+         socket.assigns,
          ~S"""
          function* Digit() {
            const [digit] = yield /^\d+/;
@@ -94,12 +132,18 @@ defmodule MiniModulesWeb.YieldParserLive do
            return [first, second, third, fourth];
          }
          """,
-         "1.2.3.4"
+         "1.2.3.4",
+         :load
        )
      )}
   end
 
   def handle_event("changed", %{"source" => source, "input" => input}, socket) do
-    {:noreply, assign(socket, process(source, input))}
+    {:noreply, assign(socket, process(socket.assigns, source, input))}
+  end
+
+  def handle_event("source_enter_key", %{"value" => source}, socket) do
+    IO.puts("source_enter_key")
+    {:noreply, assign(socket, process(socket.assigns, source, socket.assigns.input, :load))}
   end
 end

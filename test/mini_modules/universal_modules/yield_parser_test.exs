@@ -68,10 +68,10 @@ defmodule MiniModules.YieldParserTest do
                         return videoID;
                       }
 
-                      export function* IPAddress() {
-                        const first = yield [Long, Embed, Short];
+                      export function* YouTubeURL() {
+                        const videoID = yield [Long, Embed, Short];
                         yield mustEnd;
-                        return first;
+                        return videoID;
                       }
                       """)
 

@@ -12,12 +12,8 @@ defmodule MiniModulesWeb.EditorLive do
       socket
       |> assign(
         process("""
-        import { pi } from "https://gist.githubusercontent.com/BurntCaramel/d9d2ca7ed6f056632696709a2ae3c413/raw/0234322cf854d52e2f2bd33aa37e8c8b00f9df0a/1.js";
-        import { Loader } from "https://gist.githubusercontent.com/BurntCaramel/21dbd15652c8d9a7570f49fba8bda701/raw";
-        export { pi };
-        export { Loader };
-        export const a = 5;
-        export const exampleDotOrg = new URL("https://example.org");
+        import { YouTubeURL } from "https://gist.github.com/BurntCaramel/5cabb793e7e4ba961c00a807323e0afe/raw";
+        export { YouTubeURL };
         """)
       )
 
@@ -52,8 +48,8 @@ defmodule MiniModulesWeb.EditorLive do
         <% end %>
 
         <%= if @result do %>
-          <output class="block p-4 bg-green-900/25 text-white border border-green-800"><pre><%= inspect(@result.module, pretty: true) %></pre></output>
-          <output class="block p-4 bg-green-900/25 text-white border border-green-800"><%= @result.json %></output>
+          <output class="block p-4 bg-green-900/20 text-green-900 border border-green-800"><pre><%= inspect(@result.module, pretty: true) %></pre></output>
+          <output class="block p-4 bg-green-900/20 text-green-900 border border-green-800"><%= @result.json %></output>
         <% end %>
       </section>
     </.form>
@@ -61,7 +57,7 @@ defmodule MiniModulesWeb.EditorLive do
     """
   end
 
-  defp process(input, load \\ false) do
+  defp process(input, load \\ nil) do
     decoded =
       try do
         UniversalModules.Parser.decode(input)
@@ -73,13 +69,20 @@ defmodule MiniModulesWeb.EditorLive do
 
     decoded =
       case {load, decoded} do
-        {true, {:ok, module}} ->
+        {:load, {:ok, module}} ->
+          IO.inspect(module)
           {:ok, module, _} =
             UniversalModules.ImportResolver.transform(module, fn url ->
               # TODO: add caching
               %{done: true, data: data} = Fetch.Get.load(url)
               # Process.sleep(1000)
-              UniversalModules.Parser.decode(data)
+              case data do
+                nil ->
+                  {:error, {:did_not_load, url}}
+
+                data ->
+                  UniversalModules.Parser.decode(data)
+              end
               # {:ok, [
               #   {:export, {:const, "b", 6}}
               # ]}
@@ -113,6 +116,6 @@ defmodule MiniModulesWeb.EditorLive do
   end
 
   def handle_event("load", %{"input" => input}, socket) do
-    {:noreply, assign(socket, process(input, true))}
+    {:noreply, assign(socket, process(input, :load))}
   end
 end

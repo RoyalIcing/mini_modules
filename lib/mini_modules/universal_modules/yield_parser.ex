@@ -172,11 +172,14 @@ defmodule MiniModules.UniversalModules.YieldParser do
   defp evaluate([{:const, identifier, {:yield, choices}} | statements], rest, context) when is_list(choices) do
     Enum.reduce_while(choices, {:error, :no_choices}, fn choice, _fallback ->
       case evaluate([{:const, identifier, {:yield, choice}} | statements], rest, context) do
-        success = {:ok, _, _} ->
-          {:halt, success}
+        {:ok, _, _} = result ->
+          {:halt, result}
 
         {:error, {:did_not_match, _, _}} ->
           {:cont, {:error, {:no_matching_choice, choices, %{rest: rest}}}}
+
+        {:error, _reason} = result ->
+          {:halt, result}
       end
     end)
   end

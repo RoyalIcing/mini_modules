@@ -1,70 +1,161 @@
 defmodule MiniModules.UniversalModules.ImportResolver do
   defmodule Context do
-    defstruct imported_modules: %{}, imported_identifiers: %{}
+    defstruct imported_modules: %{}, matched_statements: %{}, local_statements: %{}
 
     def from_module(module_body, loader) do
       import_sources =
         MapSet.new(for {:import, _identifiers, {:url, source}} <- module_body, do: source)
 
+      # imported_modules =
+      #   Map.new(
+      #     for source <- import_sources,
+      #         result = loader.(source),
+      #         match?({:ok, _}, result),
+      #         {:ok, result} = result,
+      #         result != nil,
+      #         do: {source, result}
+      #   )
+
       imported_modules =
-        Map.new(
-          for source <- import_sources, {:ok, result} = loader.(source), result != nil, do: {source, result}
-        )
+        Enum.reduce_while(import_sources, [], fn source, acc ->
+          case loader.(source) do
+            {:ok, nil} ->
+              {:cont, acc}
 
-      imported_identifiers =
-        Map.new(
-          for statement <- module_body,
-              result <- from_statement(statement, imported_modules),
-              do: result
-        )
+            {:ok, result} ->
+              {:cont, [{source, result} | acc]}
 
-      %__MODULE__{imported_modules: imported_modules, imported_identifiers: imported_identifiers}
+            {:error, reason} ->
+              {:cont, {:error, reason}}
+
+            :error ->
+              {:cont, :error}
+          end
+        end)
+
+      case imported_modules do
+        {:error, _} = result ->
+          result
+
+        pairs ->
+          imported_modules = Map.new(pairs)
+
+          imported =
+            for statement <- module_body,
+                result <- from_statement(statement, imported_modules),
+                do: result
+
+          {matched_statements, local_statements} =
+            imported
+            |> Enum.split_with(fn s -> match?({:matched_import, _, _}, s) end)
+
+          matched_statements =
+            matched_statements
+            |> Map.new(fn {:matched_import, name, statement} -> {name, statement} end)
+
+          local_statements =
+            local_statements
+            |> Map.new(fn {:local, name, statement} -> {name, statement} end)
+
+          {:ok,
+           %__MODULE__{
+             imported_modules: imported_modules,
+             matched_statements: matched_statements,
+             local_statements: local_statements
+           }}
+      end
+
+      # imported_modules =
+      #   Map.new(
+      #     for source <- import_sources,
+      #         result = loader.(source),
+      #         match?({:ok, _}, result),
+      #         {:ok, result} = result,
+      #         result != nil,
+      #         do: {source, result}
+      #   )
     end
 
     defp from_statement({:import, identifiers, {:url, source}}, imported_modules)
          when is_map_key(imported_modules, source) do
       imported_module = imported_modules[source]
 
-      for identifier <- identifiers,
-          source_statement <- imported_module,
-          resolved <- lookup(identifier, source_statement) do
-        {identifier, resolved}
+      identifiers = MapSet.new(identifiers)
+
+      for source_statement <- imported_module,
+          resolved <- lookup(identifiers, source_statement) do
+        resolved
       end
+
+      # for identifier <- identifiers,
+      #     source_statement <- imported_module,
+      #     resolved <- lookup(identifier, source_statement) do
+      #   {identifier, resolved}
+      # end
     end
 
     defp from_statement(_, _), do: []
 
-    defp lookup(identifier, {:export, {:const, name, _} = exported}) when identifier == name,
-      do: [exported]
+    defp identify({:export, {:const, name, _}}), do: name
 
-    defp lookup(identifier, {:export, {:function, name, _, _} = exported})
-         when identifier == name,
-         do: [exported]
+    defp identify({:export, {:function, name, _, _}}), do: name
 
-    defp lookup(identifier, {:export, {:generator_function, name, _, _} = exported})
-         when identifier == name,
-         do: [exported]
+    defp identify({:export, {:generator_function, name, _, _}}), do: name
 
-    defp lookup(_, _), do: []
+    defp identify({:const, name, _}), do: name
+
+    defp identify({:function, name, _, _}), do: name
+
+    defp identify({:generator_function, name, _, _}), do: name
+
+    defp identify(_), do: nil
+
+    defp lookup(identifiers, statement) do
+      identifier = identify(statement)
+
+      case {identifier, statement, MapSet.member?(identifiers, identifier)} do
+        {nil, _, _} ->
+          []
+
+        {name, {:export, exported}, true} ->
+          [{:matched_import, name, exported}]
+
+        {name, {:export, exported}, false} ->
+          [{:local, name, exported}]
+
+        {name, statement, false} ->
+          [{:local, name, statement}]
+
+        _ ->
+          []
+      end
+    end
   end
 
   def transform(module_body, loader) do
-    context = Context.from_module(module_body, loader)
+    case Context.from_module(module_body, loader) do
+      {:ok, context} ->
+        processed =
+          for statement <- module_body, new_statement <- process(statement, context) do
+            new_statement
+          end
 
-    processed =
-      for statement <- module_body, new_statement <- process(statement, context) do
-        new_statement
-      end
+        processed = Map.values(context.local_statements) ++ processed
 
-    {:ok, processed, %{imported_modules: context.imported_modules}}
+        {:ok, processed, %{imported_modules: context.imported_modules}}
+
+      other ->
+        other
+    end
   end
 
   defp process({:import, _identifiers, _}, _),
+    # TODO: recursive imports
     do: []
 
-  defp process({:export, [{:ref, ref}]}, %Context{imported_identifiers: imported_identifiers})
-       when is_map_key(imported_identifiers, ref) do
-    [{:export, imported_identifiers[ref]}]
+  defp process({:export, [{:ref, ref}]}, %Context{matched_statements: matched_statements})
+       when is_map_key(matched_statements, ref) do
+    [{:export, matched_statements[ref]}]
   end
 
   defp process(statement, _context), do: [statement]

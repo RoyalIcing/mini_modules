@@ -23,13 +23,27 @@ defmodule MiniModules.ImportResolverTest do
                  }
                  """)
 
+  @youtube_parser_source Parser.decode(~S"""
+                         function* VideoID() {
+                           const [videoID] = yield /^[a-zA-Z0-9_]+$/;
+                           return videoID;
+                         }
+                         export function* Long() {
+                           yield "https://www.youtube.com/watch?v=";
+                           const videoID = yield VideoID;
+                           return videoID;
+                         }
+                         """)
+
   setup_all do
     {:ok, const_module} = @const_source
     {:ok, switch_module} = @switch_source
+    {:ok, youtube_parser_module} = @youtube_parser_source
 
     [
       const_module: const_module,
-      switch_module: switch_module
+      switch_module: switch_module,
+      youtube_parser_module: youtube_parser_module
     ]
   end
 
@@ -74,12 +88,47 @@ defmodule MiniModules.ImportResolverTest do
                        ]},
                       {:return, {:ref, "Off"}}
                     ]}},
-                  {:export, [{:ref, "NotLoaded"}]},
+                  {:export, [{:ref, "NotLoaded"}]}
                 ],
                 %{
                   imported_modules: %{
                     "https://example.org/const.js" => const_module,
                     "https://example.org/switch-machine.js" => switch_module
+                  }
+                }}
+    end
+
+    test "includes", %{
+      youtube_parser_module: youtube_parser_module
+    } do
+      {:ok, result} =
+        Parser.decode(~S"""
+        import { Long } from "https://example.org/youtube.js";
+        export { Long };
+        """)
+
+      assert ImportResolver.transform(result, fn
+               "https://example.org/youtube.js" -> {:ok, youtube_parser_module}
+               _ -> :error
+             end) ==
+               {:ok,
+                [
+                  {:generator_function, "VideoID", [],
+                   [
+                     {:const, ["videoID"], {:yield, {:regex, "^[a-zA-Z0-9_]+$"}}},
+                     {:return, {:ref, "videoID"}}
+                   ]},
+                  {:export,
+                   {:generator_function, "Long", [],
+                    [
+                      {:yield, "https://www.youtube.com/watch?v="},
+                      {:const, "videoID", {:yield, {:ref, "VideoID"}}},
+                      {:return, {:ref, "videoID"}}
+                    ]}}
+                ],
+                %{
+                  imported_modules: %{
+                    "https://example.org/youtube.js" => youtube_parser_module
                   }
                 }}
     end
