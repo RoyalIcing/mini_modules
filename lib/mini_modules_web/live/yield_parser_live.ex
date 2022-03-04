@@ -15,21 +15,21 @@ defmodule MiniModulesWeb.YieldParserLive do
       phx-change="changed">
       <textarea
         name="source"
-        rows={16}
+        rows={24}
         class="w-full font-mono bg-gray-800 text-white border border-gray-600"
         phx-keyup="source_enter_key"
         phx-key="Enter"
       ><%= @source %></textarea>
 
       <section class="block w-1/2 space-y-4">
-        <textarea name="input" rows={1} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>
+        <textarea name="input" rows={6} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>
         <%= if @error_message do %>
           <div role="alert" class="text-red-300">
             <%= @error_message %>
           </div>
         <% end %>
         <%= if @result do %>
-          <output class="block"><%= inspect(@result) %></output>
+          <output class="block p-4 bg-blue-900/20 text-blue-900 border border-blue-800"><pre><%= inspect(@result, pretty: true) %></pre></output>
         <% end %>
         <dl class="block">
           <dt class="font-bold">Rest</dt>

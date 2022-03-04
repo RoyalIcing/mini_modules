@@ -25,7 +25,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
     >
       <textarea
         name="source"
-        rows={16}
+        rows={24}
         class="w-full font-mono bg-gray-800 text-white border border-gray-600"
         phx-keyup="source_enter_key"
         phx-key="Enter"
