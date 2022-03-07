@@ -44,6 +44,34 @@ defmodule MiniModulesWeb.YieldParserLive do
                    }
                    """, "/"}
 
+  @example_youtube {~S"""
+                    function* VideoID() {
+                      const [videoID] = yield /^[a-zA-Z0-9_]+$/;
+                      return videoID;
+                    }
+                    function* Long() {
+                      yield ["https://youtube.com/watch?v=", "https://www.youtube.com/watch?v="];
+                      const videoID = yield VideoID;
+                      return videoID;
+                    }
+                    function* Embed() {
+                      yield "https://www.youtube.com/embed/";
+                      const videoID = yield VideoID;
+                      return videoID;
+                    }
+                    function* Short() {
+                      yield "https://youtu.be/";
+                      const videoID = yield VideoID;
+                      return videoID;
+                    }
+
+                    export function* YouTubeURL() {
+                      const videoID = yield [Long, Embed, Short];
+                      yield mustEnd;
+                      return videoID;
+                    }
+                    """, "https://youtube.com/watch?v=ogfYd705cRs"}
+
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
   def render(assigns) do
@@ -64,6 +92,7 @@ defmodule MiniModulesWeb.YieldParserLive do
         <div class="px-4 py-2 space-x-8">
           <button type="button" phx-click="example_ip_address">IP Address</button>
           <button type="button" phx-click="example_router">Router</button>
+          <button type="button" phx-click="example_youtube">YouTube URL</button>
         </div>
       </div>
 
@@ -182,13 +211,8 @@ defmodule MiniModulesWeb.YieldParserLive do
     {:noreply, assign(socket, process(socket.assigns, source, socket.assigns.input, :load))}
   end
 
-  def handle_event("example_ip_address", _value, socket) do
-    socket = use_example("ip_address", socket)
-    {:noreply, socket}
-  end
-
-  def handle_event("example_router", _value, socket) do
-    socket = use_example("router", socket)
+  def handle_event("example_" <> name, _value, socket) do
+    socket = use_example(name, socket)
     {:noreply, socket}
   end
 
@@ -197,6 +221,9 @@ defmodule MiniModulesWeb.YieldParserLive do
 
   defp use_example("router", socket = %Socket{}),
     do: reset_content(@example_router, socket)
+
+  defp use_example("youtube", socket = %Socket{}),
+    do: reset_content(@example_youtube, socket)
 
   defp reset_content({source, input}, socket = %Socket{}) do
     socket |> assign(process(socket.assigns, source, input, :load))

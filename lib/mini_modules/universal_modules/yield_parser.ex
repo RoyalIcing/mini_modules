@@ -63,6 +63,7 @@ defmodule MiniModules.UniversalModules.YieldParser do
   end
 
   defp process_yielded(choices, rest, context) when is_list(choices) do
+    # TODO: include underlying errors in this error.
     no_match_error = {:error, {:no_matching_choice, choices, %{rest: rest}}}
 
     Enum.reduce_while(choices, {:error, :no_choices}, fn choice, _fallback ->
@@ -71,6 +72,9 @@ defmodule MiniModules.UniversalModules.YieldParser do
           {:halt, success}
 
         {:error, {:did_not_match, _, _}} ->
+          {:cont, no_match_error}
+
+        {:error, {:no_matching_choice, _, _}} ->
           {:cont, no_match_error}
 
         {:error, {:expected_eof, _}} ->

@@ -62,7 +62,7 @@ defmodule MiniModules.YieldParserTest do
                         return videoID;
                       }
                       function* Long() {
-                        yield "https://www.youtube.com/watch?v=";
+                        yield ["https://youtube.com/watch?v=", "https://www.youtube.com/watch?v="];
                         const videoID = yield VideoID;
                         return videoID;
                       }
@@ -166,6 +166,9 @@ defmodule MiniModules.YieldParserTest do
     end
 
     test "youtube url module with valid input", %{youtube_url_module: m} do
+      assert YieldParser.run_parser(m, "https://youtube.com/watch?v=ogfYd705cRs") ==
+               {:ok, "ogfYd705cRs", %{rest: ""}}
+
       assert YieldParser.run_parser(m, "https://www.youtube.com/watch?v=HRb7B9fPhfA") ==
                {:ok, "HRb7B9fPhfA", %{rest: ""}}
 
