@@ -55,22 +55,7 @@ defmodule MiniModulesWeb.YieldParserLive do
       case decoded do
         {:ok, module} ->
           {:ok, module, %{imported_modules: imported_modules}} =
-            UniversalModules.ImportResolver.transform(module, fn url ->
-              case {load, assigns[:imported_modules]} do
-                # Use previously loaded module.
-                {_, %{^url => loaded_module}} ->
-                  {:ok, loaded_module}
-
-                # Otherwise, load if we are being asked to.
-                {:load, _} ->
-                  %{done: true, data: data} = Fetch.Get.load(url)
-                  UniversalModules.Parser.decode(data)
-
-                # Otherwise, returning nothing.
-                {_, _} ->
-                  {:ok, nil}
-              end
-            end)
+            resolve_imports(load, module, assigns[:imported_modules])
 
           {{:ok, module}, imported_modules}
 
@@ -106,6 +91,30 @@ defmodule MiniModulesWeb.YieldParserLive do
       error_message: error_message,
       imported_modules: imported_modules
     }
+  end
+
+  defp resolve_imports(action, module, previously_imported_modules) do
+    UniversalModules.ImportResolver.transform(module, fn url ->
+      case {previously_imported_modules, action} do
+        # Use previously loaded module.
+        {%{^url => loaded_module}, _} ->
+          {:ok, loaded_module}
+
+        # Otherwise, load if we are being asked to.
+        {_, :load} ->
+          case Fetch.Get.load(url) do
+            %{done: true, data: data} ->
+              UniversalModules.Parser.decode(data)
+
+            response ->
+              {:error, {:did_not_load, response}}
+          end
+
+        # Otherwise, returning nothing.
+        {_, _} ->
+          {:ok, nil}
+      end
+    end)
   end
 
   def mount(_parmas, _session, socket) do
