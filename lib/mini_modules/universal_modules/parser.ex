@@ -16,7 +16,7 @@ defmodule MiniModules.UniversalModules.Parser do
   end
 
   # def decode(input), do: Root.decode(input, [])
-  def decode(input) when is_binary(input), do: switch(Root, input, [])
+  def decode(input) when is_binary(input), do: switch(Root, input <> "\n", [])
 
   defp switch(submodule, input, result) do
     mod = Module.concat(__MODULE__, submodule)
