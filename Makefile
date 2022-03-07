@@ -12,7 +12,7 @@ benchmark:
 
 .PHONY: production
 production:
-	fly deploy
+	fly deploy --remote-only
 
 .PHONY: logs
 logs:
