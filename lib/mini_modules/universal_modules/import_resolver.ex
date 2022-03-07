@@ -26,10 +26,10 @@ defmodule MiniModules.UniversalModules.ImportResolver do
               {:cont, [{source, result} | acc]}
 
             {:error, reason} ->
-              {:cont, {:error, reason}}
+              {:halt, {:error, reason}}
 
             :error ->
-              {:cont, :error}
+              {:halt, :error}
           end
         end)
 
