@@ -63,24 +63,46 @@ defmodule MiniModules.UniversalModules.YieldParser do
   end
 
   defp process_yielded(choices, rest, context) when is_list(choices) do
-    # TODO: include underlying errors in this error.
-    no_match_error = {:error, {:no_matching_choice, choices, %{rest: rest}}}
-
-    Enum.reduce_while(choices, {:error, :no_choices}, fn choice, _fallback ->
+    Enum.reduce_while(choices, {:error, :no_choices}, fn choice, previous_error ->
       case process_yielded(choice, rest, context) do
         {:ok, _, _} = success ->
           {:halt, success}
 
-        {:error, {:did_not_match, _, _}} ->
-          {:cont, no_match_error}
+        {:error, reason} ->
+          expected =
+            case previous_error do
+              {:error, :no_choices} ->
+                []
 
-        {:error, {:no_matching_choice, _, _}} ->
-          {:cont, no_match_error}
+              {:error, {:no_matching_choice, _, %{expected_one_of: expected}}} ->
+                expected
+            end
 
-        {:error, {:expected_eof, _}} ->
-          {:cont, no_match_error}
+          expected =
+            case reason do
+              {:did_not_match, value, _} ->
+                [value | expected]
+
+              {:no_matching_choice, _, %{expected_one_of: nested_expected}} ->
+                expected ++ Enum.reverse(nested_expected)
+
+              # TODO: ensure {:error, {:invalid_regex, _, _}} is surfaced.
+
+              _ ->
+                expected
+            end
+
+          {:cont, {:error, {:no_matching_choice, choices, %{rest: rest, expected_one_of: expected}}}}
       end
     end)
+    |> case do
+      {:error, {:no_matching_choice, choices, %{rest: rest, expected_one_of: expected_one_of}}} ->
+        expected_one_of = Enum.reverse(expected_one_of)
+        {:error, {:no_matching_choice, choices, %{rest: rest, expected_one_of: expected_one_of}}}
+
+      other ->
+        other
+    end
   end
 
   defp process_yielded({:regex, regex_source}, rest, _context) do

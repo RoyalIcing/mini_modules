@@ -134,13 +134,19 @@ defmodule MiniModules.YieldParserTest do
 
     test "fruit module with invalid input", %{fruit_module: m} do
       assert YieldParser.run_parser(m, " apple") ==
-               {:error, {:no_matching_choice, ["apple", "grape", "blueberry"], %{rest: " apple"}}}
+               {:error,
+                {:no_matching_choice, ["apple", "grape", "blueberry"],
+                 %{rest: " apple", expected_one_of: ["apple", "grape", "blueberry"]}}}
 
       assert YieldParser.run_parser(m, "blah") ==
-               {:error, {:no_matching_choice, ["apple", "grape", "blueberry"], %{rest: "blah"}}}
+               {:error,
+                {:no_matching_choice, ["apple", "grape", "blueberry"],
+                 %{rest: "blah", expected_one_of: ["apple", "grape", "blueberry"]}}}
 
       assert YieldParser.run_parser(m, "") ==
-               {:error, {:no_matching_choice, ["apple", "grape", "blueberry"], %{rest: ""}}}
+               {:error,
+                {:no_matching_choice, ["apple", "grape", "blueberry"],
+                 %{rest: "", expected_one_of: ["apple", "grape", "blueberry"]}}}
     end
 
     test "naive name parser with valid input", %{naive_name_module: m} do
@@ -187,7 +193,9 @@ defmodule MiniModules.YieldParserTest do
                {:ok, ["About"], %{rest: ""}}
 
       assert YieldParser.run_parser(m, "/not-found") ==
-               {:error, {:no_matching_choice, [ref: "Home", ref: "About"], %{rest: "/not-found"}}}
+               {:error,
+                {:no_matching_choice, [ref: "Home", ref: "About"],
+                 %{rest: "/not-found", expected_one_of: ["/about"]}}}
     end
 
     test "it suggests did you mean when yielded component name has a typo" do
