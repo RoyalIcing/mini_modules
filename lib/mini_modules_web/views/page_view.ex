@@ -1,3 +1,3 @@
-defmodule MiniModulesWeb.PageView do
+defmodule MiniModulesWeb.LandingView do
   use MiniModulesWeb, :view
 end

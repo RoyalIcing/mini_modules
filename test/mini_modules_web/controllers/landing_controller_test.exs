@@ -1,4 +1,4 @@
-defmodule MiniModulesWeb.PageControllerTest do
+defmodule MiniModulesWeb.LandingControllerTest do
   use MiniModulesWeb.ConnCase
 
   test "GET /", %{conn: conn} do

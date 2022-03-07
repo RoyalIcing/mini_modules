@@ -14,6 +14,15 @@ defmodule MiniModules.YieldParserTest do
                 }
                 """)
 
+  @naive_name_source Parser.decode(~S"""
+                     export function* NaiveName() {
+                       const [first] = yield /[\w]+/;
+                       yield /[\s]+/;
+                       const [last] = yield /[\w]+/;
+                       return [first, last];
+                     }
+                     """)
+
   @ip_address_source Parser.decode(~S"""
                      export function* IPAddress() {
                        const [first] = yield /^\d+/;
@@ -75,17 +84,41 @@ defmodule MiniModules.YieldParserTest do
                       }
                       """)
 
+  @router_source Parser.decode(~S"""
+                 function* Home() {
+                   yield "/";
+                   yield mustEnd;
+                   return ["Home"];
+                 }
+
+                 function* About() {
+                   yield "/about";
+                   yield mustEnd;
+                   return ["About"];
+                 }
+
+                 export function* Router() {
+                   const route = yield [Home, About];
+                   yield mustEnd;
+                   return route;
+                 }
+                 """)
+
   setup_all do
     {:ok, fruit_module} = @fruit_source
+    {:ok, naive_name_module} = @naive_name_source
     {:ok, ip_address_module} = @ip_address_source
     {:ok, ip_address_2_module} = @ip_address_2_source
     {:ok, youtube_url_module} = @youtube_url_source
+    {:ok, router_module} = @router_source
 
     [
       fruit_module: fruit_module,
+      naive_name_module: naive_name_module,
       ip_address_module: ip_address_module,
       ip_address_2_module: ip_address_2_module,
-      youtube_url_module: youtube_url_module
+      youtube_url_module: youtube_url_module,
+      router_module: router_module
     ]
   end
 
@@ -110,6 +143,11 @@ defmodule MiniModules.YieldParserTest do
                {:error, {:no_matching_choice, ["apple", "grape", "blueberry"], %{rest: ""}}}
     end
 
+    test "naive name parser with valid input", %{naive_name_module: m} do
+      assert YieldParser.run_parser(m, "First Last") == {:ok, ["First", "Last"], %{rest: ""}}
+      assert YieldParser.run_parser(m, "Alice Jones") == {:ok, ["Alice", "Jones"], %{rest: ""}}
+    end
+
     test "ip address module with valid input", %{ip_address_module: m} do
       assert YieldParser.run_parser(m, "1.2.4.9") ==
                {:ok, ["1", "2", "4", "9"], %{rest: ""}}
@@ -130,10 +168,48 @@ defmodule MiniModules.YieldParserTest do
     test "youtube url module with valid input", %{youtube_url_module: m} do
       assert YieldParser.run_parser(m, "https://www.youtube.com/watch?v=HRb7B9fPhfA") ==
                {:ok, "HRb7B9fPhfA", %{rest: ""}}
+
       assert YieldParser.run_parser(m, "https://www.youtube.com/embed/HRb7B9fPhfA") ==
                {:ok, "HRb7B9fPhfA", %{rest: ""}}
+
       assert YieldParser.run_parser(m, "https://youtu.be/HRb7B9fPhfA") ==
                {:ok, "HRb7B9fPhfA", %{rest: ""}}
+    end
+
+    test "router module with valid input", %{router_module: m} do
+      assert YieldParser.run_parser(m, "/") ==
+               {:ok, ["Home"], %{rest: ""}}
+
+      assert YieldParser.run_parser(m, "/about") ==
+               {:ok, ["About"], %{rest: ""}}
+
+      assert YieldParser.run_parser(m, "/not-found") ==
+               {:error, {:no_matching_choice, [ref: "Home", ref: "About"], %{rest: "/not-found"}}}
+    end
+
+    test "it suggests did you mean when yielded component name has a typo" do
+      {:ok, m} =
+        Parser.decode(~S"""
+        function* Digit() {
+          const [digit] = yield /^\d+/;
+          return digit;
+        }
+
+        export function* IPAddress() {
+          const first = yield Digot;
+          yield ".";
+          const second = yield Digit;
+          yield ".";
+          const third = yield Digit;
+          yield ".";
+          const fourth = yield Digit;
+          yield mustEnd;
+          return [first, second, third, fourth];
+        }
+        """)
+
+      assert YieldParser.run_parser(m, "1.2.3.4") ==
+               {:error, {:component_not_found, "Digot", %{did_you_mean: "Digit"}}}
     end
   end
 end

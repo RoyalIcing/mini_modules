@@ -1,8 +1,48 @@
 defmodule MiniModulesWeb.YieldParserLive do
   use MiniModulesWeb, {:live_view, container: {:div, []}}
 
+  alias Phoenix.LiveView.Socket
   alias MiniModules.UniversalModules
   alias MiniModules.Fetch
+
+  @example_ip_address {~S"""
+                       function* Digit() {
+                         const [digit] = yield /^\d+/;
+                         return digit;
+                       }
+
+                       export function* IPAddress() {
+                         const first = yield Digit;
+                         yield ".";
+                         const second = yield Digit;
+                         yield ".";
+                         const third = yield Digit;
+                         yield ".";
+                         const fourth = yield Digit;
+                         yield mustEnd;
+                         return [first, second, third, fourth];
+                       }
+                       """, "1.2.3.4"}
+
+  @example_router {~S"""
+                   function* Home() {
+                     yield "/";
+                     yield mustEnd;
+                     return ["Home"];
+                   }
+
+                   function* About() {
+                     yield "/about";
+                     yield mustEnd;
+                     return ["About"];
+                   }
+
+                   export function* Router() {
+                     const route = yield [Home, About];
+                     yield mustEnd;
+                     return route;
+                   }
+                   """, "/"}
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
@@ -13,27 +53,37 @@ defmodule MiniModulesWeb.YieldParserLive do
       id="editor-form"
       class="flex gap-4"
       phx-change="changed">
-      <textarea
-        name="source"
-        rows={24}
-        class="w-full font-mono bg-gray-800 text-white border border-gray-600"
-        phx-keyup="source_enter_key"
-        phx-key="Enter"
-      ><%= @source %></textarea>
+      <div class="w-full">
+        <textarea
+          name="source"
+          rows={24}
+          class="w-full font-mono bg-gray-800 text-white border border-gray-600"
+          phx-keyup="source_enter_key"
+          phx-key="Enter"
+        ><%= @source %></textarea>
+        <div class="px-4 py-2 space-x-8">
+          <button type="button" phx-click="example_ip_address">IP Address</button>
+          <button type="button" phx-click="example_router">Router</button>
+        </div>
+      </div>
 
       <section class="block w-1/2 space-y-4">
         <textarea name="input" rows={6} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>
         <%= if @error_message do %>
-          <div role="alert" class="text-red-300">
+          <div role="alert" class="p-4 bg-red-900/20 text-red-800 border border-red-800/25">
             <%= @error_message %>
           </div>
         <% end %>
         <%= if @result do %>
-          <output class="block p-4 bg-blue-900/20 text-blue-900 border border-blue-800"><pre><%= inspect(@result, pretty: true) %></pre></output>
+          <output class="block p-4 bg-blue-900/20 text-blue-900 border border-blue-800/25"><pre><%= inspect(@result, pretty: true) %></pre></output>
         <% end %>
         <dl class="block">
-          <dt class="font-bold">Rest</dt>
-          <dd class="ml-8"><pre>"<%= @rest %>"</pre></dd>
+          <%= if @rest && @rest != "" do %>
+          <div>
+            <dt class="font-bold">Rest</dt>
+            <dd class="ml-8"><pre>"<%= @rest %>"</pre></dd>
+          </div>
+          <% end %>
         </dl>
       </section>
     </.form>
@@ -118,33 +168,9 @@ defmodule MiniModulesWeb.YieldParserLive do
   end
 
   def mount(_parmas, _session, socket) do
-    {:ok,
-     assign(
-       socket,
-       process(
-         socket.assigns,
-         ~S"""
-         function* Digit() {
-           const [digit] = yield /^\d+/;
-           return digit;
-         }
-
-         export function* IPAddress() {
-           const first = yield Digit;
-           yield ".";
-           const second = yield Digit;
-           yield ".";
-           const third = yield Digit;
-           yield ".";
-           const fourth = yield Digit;
-           yield mustEnd;
-           return [first, second, third, fourth];
-         }
-         """,
-         "1.2.3.4",
-         :load
-       )
-     )}
+    {source, input} = @example_ip_address
+    socket = socket |> assign(process(socket.assigns, source, input, :load))
+    {:ok, socket}
   end
 
   def handle_event("changed", %{"source" => source, "input" => input}, socket) do
@@ -154,5 +180,25 @@ defmodule MiniModulesWeb.YieldParserLive do
   def handle_event("source_enter_key", %{"value" => source}, socket) do
     IO.puts("source_enter_key")
     {:noreply, assign(socket, process(socket.assigns, source, socket.assigns.input, :load))}
+  end
+
+  def handle_event("example_ip_address", _value, socket) do
+    socket = use_example("ip_address", socket)
+    {:noreply, socket}
+  end
+
+  def handle_event("example_router", _value, socket) do
+    socket = use_example("router", socket)
+    {:noreply, socket}
+  end
+
+  defp use_example("ip_address", socket = %Socket{}),
+    do: reset_content(@example_ip_address, socket)
+
+  defp use_example("router", socket = %Socket{}),
+    do: reset_content(@example_router, socket)
+
+  defp reset_content({source, input}, socket = %Socket{}) do
+    socket |> assign(process(socket.assigns, source, input, :load))
   end
 end

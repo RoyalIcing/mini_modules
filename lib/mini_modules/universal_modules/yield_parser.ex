@@ -50,86 +50,51 @@ defmodule MiniModules.UniversalModules.YieldParser do
     end
   end
 
-  defp evaluate([{:comment, _} | statements], rest, context),
-    do: evaluate(statements, rest, context)
-
-  defp evaluate([{:yield, value} | statements], rest, context) when is_binary(value) do
+  defp process_yielded(value, rest, _context) when is_binary(value) do
     size = byte_size(value)
 
     case rest do
       <<prefix::size(size)-binary, rest::bitstring>> when prefix == value ->
-        evaluate(statements, rest, context)
+        {:ok, value, rest}
 
       _ ->
         {:error, {:did_not_match, value, %{rest: rest}}}
     end
   end
 
-  defp evaluate([{:yield, {:ref, "mustEnd"}} | statements], rest, context) do
+  defp process_yielded(choices, rest, context) when is_list(choices) do
+    no_match_error = {:error, {:no_matching_choice, choices, %{rest: rest}}}
+
+    Enum.reduce_while(choices, {:error, :no_choices}, fn choice, _fallback ->
+      case process_yielded(choice, rest, context) do
+        {:ok, _, _} = success ->
+          {:halt, success}
+
+        {:error, {:did_not_match, _, _}} ->
+          {:cont, no_match_error}
+
+        {:error, {:expected_eof, _}} ->
+          {:cont, no_match_error}
+      end
+    end)
+  end
+
+  defp process_yielded({:regex, regex_source}, rest, _context) do
+    regex(regex_source, rest)
+  end
+
+  defp process_yielded({:ref, "mustEnd"}, rest, _context) do
     case rest do
       "" ->
-        evaluate(statements, rest, context)
+        {:ok, "", ""}
 
       rest ->
         {:error, {:expected_eof, %{rest: rest}}}
     end
   end
 
-  # defp evaluate([{:yield, {:regex, source}} | statements], rest, context) do
-  #   case Regex.compile(source) do
-  #     {:ok, regex} ->
-  #       ["", matched, rest] = Regex.split(regex, rest, parts: 2, include_captures: true)
-  #       evaluate(statements, rest, %Context{context | reply: matched})
-
-  #     {:error, reason} ->
-  #       {:error, {:invalid_regex, source, reason, %{rest: rest}}}
-  #   end
-  # end
-
-  defp evaluate([{:yield, choices} | statements], rest, context) when is_list(choices) do
-    Enum.reduce_while(choices, {:error, :no_choices}, fn choice, _fallback ->
-      case evaluate([{:yield, choice} | statements], rest, context) do
-        success = {:ok, _, _} ->
-          {:halt, success}
-
-        {:error, {:did_not_match, _, _}} ->
-          {:cont, {:error, {:no_matching_choice, choices, %{rest: rest}}}}
-      end
-    end)
-  end
-
-  defp evaluate([{:yield, value} | _statements], rest, _context) do
-    {:error, {:did_not_match, value, %{rest: rest}}}
-  end
-
-  defp evaluate(
-         [{:const, [identifier], {:yield, {:regex, regex_source}}} | statements],
-         rest,
-         context
-       )
-       when is_binary(identifier) do
-    with {:ok, match, rest} <- regex(regex_source, rest) do
-      evaluate(statements, rest, Context.assign_constant(context, identifier, match))
-    else
-      _ -> {:error, {:did_not_match, {:regex, regex_source}, %{rest: rest}}}
-    end
-  end
-
-  defp evaluate(
-         [{:const, identifier, {:yield, {:regex, regex_source}}} | statements],
-         rest,
-         context
-       )
-       when is_binary(identifier) do
-    with {:ok, match, rest} <- regex(regex_source, rest) do
-      evaluate(statements, rest, Context.assign_constant(context, [identifier], match))
-    else
-      _ -> {:error, {:did_not_match, {:regex, regex_source}, %{rest: rest}}}
-    end
-  end
-
-  defp evaluate(
-         [{:const, identifier, {:yield, {:ref, component_name}}} | statements],
+  defp process_yielded(
+         {:ref, component_name},
          rest,
          %Context{components: components} = context
        )
@@ -138,17 +103,17 @@ defmodule MiniModules.UniversalModules.YieldParser do
 
     case evaluate(body, rest, context) do
       {:ok, value, %{rest: rest}} ->
-        evaluate(statements, rest, Context.assign_constant(context, identifier, value))
+        {:ok, value, rest}
 
-      {:error, _reason} = tuple ->
-        tuple
+      {:error, _reason} = result ->
+        result
     end
   end
 
   @suggestion_threshold 0.77
 
-  defp evaluate(
-         [{:const, _, {:yield, {:ref, component_name}}} | _],
+  defp process_yielded(
+         {:ref, component_name},
          _rest,
          %Context{components: components}
        ) do
@@ -169,25 +134,53 @@ defmodule MiniModules.UniversalModules.YieldParser do
     {:error, {:component_not_found, component_name, %{did_you_mean: suggestion}}}
   end
 
-  defp evaluate([{:const, identifier, {:yield, choices}} | statements], rest, context) when is_list(choices) do
-    Enum.reduce_while(choices, {:error, :no_choices}, fn choice, _fallback ->
-      case evaluate([{:const, identifier, {:yield, choice}} | statements], rest, context) do
-        {:ok, _, _} = result ->
-          {:halt, result}
+  defp evaluate([{:comment, _} | statements], rest, context),
+    do: evaluate(statements, rest, context)
 
-        {:error, {:did_not_match, _, _}} ->
-          {:cont, {:error, {:no_matching_choice, choices, %{rest: rest}}}}
+  defp evaluate([{:yield, value} | statements], rest, context) do
+    with {:ok, _, rest} <- process_yielded(value, rest, context) do
+      evaluate(statements, rest, context)
+    end
 
-        {:error, _reason} = result ->
-          {:halt, result}
-      end
-    end)
+    # case process_yielded(value, rest, context) do
+    #   {:ok, _, rest} ->
+    #     evaluate(statements, rest, context)
+
+    #   error ->
+    #     error
+    # end
   end
 
-  # defp evaluate([{:const, [identifier], {:yield, yielded}} | statements], rest, _context)
-  #      when is_binary(identifier) do
-  #   {:error, {:did_not_match, identifier, %{rest: rest}}}
-  # end
+  defp evaluate(
+         [{:const, [identifier], {:yield, value}} | statements],
+         rest,
+         context
+       )
+       when is_binary(identifier) do
+    with {:ok, reply, rest} <- process_yielded(value, rest, context) do
+      evaluate(statements, rest, Context.assign_constant(context, identifier, reply))
+    end
+  end
+
+  defp evaluate(
+         [{:const, identifier, {:yield, value}} | statements],
+         rest,
+         context
+       )
+       when is_binary(identifier) do
+    identifier =
+      case value do
+        {:regex, _} ->
+          [identifier]
+
+        _ ->
+          identifier
+      end
+
+    with {:ok, reply, rest} <- process_yielded(value, rest, context) do
+      evaluate(statements, rest, Context.assign_constant(context, identifier, reply))
+    end
+  end
 
   defp evaluate([{:return, value}], rest, context) do
     return(value, rest, context)
@@ -215,7 +208,12 @@ defmodule MiniModules.UniversalModules.YieldParser do
     return_list(tail, [actual_value | transformed], rest, context)
   end
 
+  defp return_list([value | tail], transformed, rest, context)
+       when is_binary(value) or is_number(value) or is_list(value) do
+    return_list(tail, [value | transformed], rest, context)
+  end
+
   defp return_list([], transformed, rest, _context) do
-    {:ok, transformed |> Enum.reverse(), %{rest: rest}}
+    {:ok, Enum.reverse(transformed), %{rest: rest}}
   end
 end

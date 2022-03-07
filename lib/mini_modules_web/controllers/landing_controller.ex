@@ -1,4 +1,4 @@
-defmodule MiniModulesWeb.PageController do
+defmodule MiniModulesWeb.LandingController do
   use MiniModulesWeb, :controller
 
   alias MiniModules.Fetch.Get

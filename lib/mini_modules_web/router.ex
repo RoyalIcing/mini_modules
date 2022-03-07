@@ -17,7 +17,7 @@ defmodule MiniModulesWeb.Router do
   scope "/", MiniModulesWeb do
     pipe_through :browser
 
-    get "/", PageController, :index
+    get "/", LandingController, :index
 
     get "/editor", EditorController, :index
     live "/yieldparser", YieldParserLive, :index
