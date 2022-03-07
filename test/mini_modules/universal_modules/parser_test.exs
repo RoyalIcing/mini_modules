@@ -25,6 +25,11 @@ defmodule MiniModules.ParserTest do
                 ]}
     end
 
+    test "comment without ending newline" do
+      assert Parser.decode("// First") ==
+               {:ok, [{:comment, " First"}]}
+    end
+
     test "multiline comment" do
       assert Parser.decode("""
              /* First */
@@ -264,6 +269,23 @@ defmodule MiniModules.ParserTest do
                     {:url, "https://example.org/switch-machine.js"}
                   },
                   {:export, [ref: "Switch"]}
+                ]}
+    end
+
+    test "import then export 2" do
+      assert Parser.decode("""
+             import { YouTubeURL } from "https://gist.github.com/BurntCaramel/5cabb793e7e4ba961c00a807323e0afe/raw";
+             export { YouTubeURL };
+             """) ==
+               {:ok,
+                [
+                  {
+                    :import,
+                    ["YouTubeURL"],
+                    {:url,
+                     "https://gist.github.com/BurntCaramel/5cabb793e7e4ba961c00a807323e0afe/raw"}
+                  },
+                  {:export, [ref: "YouTubeURL"]}
                 ]}
     end
 
