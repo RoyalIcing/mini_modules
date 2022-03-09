@@ -1,9 +1,9 @@
 defmodule MiniModulesWeb.EditorLive do
   use MiniModulesWeb, {:live_view, container: {:div, []}}
 
-  alias MiniModules.UniversalModules
-  alias MiniModules.Fetch
-  # alias MiniModules.UniversalModules.Parser, as: Parser
+  alias MiniModules.{UniversalModules, Fetch}
+
+  alias MiniModulesWeb.Input.CodeEditorComponent
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
@@ -35,9 +35,7 @@ defmodule MiniModulesWeb.EditorLive do
       phx-change="changed"
       phx-submit="load"
     >
-      <minimodules-monaco-editor id="monaco-editor" source={@input} style="display: block; width: 900px; height: 400px;" phx-hook="WebComponent" name="input" phx-update="ignore">
-        <!--<textarea name="input" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>-->
-      </minimodules-monaco-editor>
+      <CodeEditorComponent.monaco id="monaco-editor" input={@input} name="input" />
       <!--<textarea name="input" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>-->
 
       <section class="block w-1/2 space-y-4">
@@ -74,7 +72,8 @@ defmodule MiniModulesWeb.EditorLive do
         {:ok, module} ->
           {:ok, module, %{imported_modules: _imported_modules}} =
             resolve_imports(load, module, %{})
-            {:ok, module}
+
+          {:ok, module}
 
         _ ->
           decoded

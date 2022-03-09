@@ -112,6 +112,13 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
                     this.editor.onDidChangeModelContent(() => {
                         const value = this.editor.getValue();
                         console.log("monaco did change", value);
+
+                        if (this.hasAttribute('name')) {
+                            const form = this.closest("form");
+                            if (form) {
+                                new FormData(form);
+                            }
+                        }
                         // const inputEl = this.querySelector('input[type="hidden"]');
                         // console.log("monaco did change", value, inputEl);
                         // this.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
@@ -119,6 +126,16 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
                         // inputEl.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
                         // inputEl.dispatchEvent(new CustomEvent('change', { value, bubbles: true, cancelable: true }));
                     });
+
+                    // const resizeObserver = new ResizeObserver((entries) => {
+                    //     entries.forEach((entry) => {
+                    //         // Ignore hidden container.
+                    //         if (this.offsetHeight > 0) {
+                    //             this.editor.layout();
+                    //         }
+                    //     });
+                    // });
+                    // resizeObserver.observe(window);
                 })
             }
         }
@@ -134,7 +151,7 @@ export const MonacoHook = {
         this.editor = window.monaco.editor.create(this.el, {
             language: 'javascript',
             model: monaco.editor.createModel(value, 'javascript', 'ts:worker.ts'),
-            value,
+            // value,
             theme: 'vs-dark',
             fontSize: 16,
             minimap: {

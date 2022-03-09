@@ -2,8 +2,8 @@ defmodule MiniModulesWeb.YieldParserLive do
   use MiniModulesWeb, {:live_view, container: {:div, []}}
 
   alias Phoenix.LiveView.Socket
-  alias MiniModules.UniversalModules
-  alias MiniModules.Fetch
+  alias MiniModules.{UniversalModules, Fetch}
+  alias MiniModulesWeb.Input.CodeEditorComponent
 
   @example_ip_address {~S"""
                        function* Digit() {
@@ -87,13 +87,14 @@ defmodule MiniModulesWeb.YieldParserLive do
       class="flex gap-4"
       phx-change="changed">
       <div class="w-full">
-        <textarea
+        <CodeEditorComponent.monaco id="monaco-editor" input={@source} name="source" />
+        <!--<textarea
           name="source"
           rows={24}
           class="w-full font-mono bg-gray-800 text-white border border-gray-600"
           phx-keyup="source_enter_key"
           phx-key="Enter"
-        ><%= @source %></textarea>
+        ><%= @source %></textarea>-->
         <div class="px-4 py-2 space-x-8">
           <button type="button" phx-click="example_ip_address">IP Address</button>
           <button type="button" phx-click="example_router">Router</button>

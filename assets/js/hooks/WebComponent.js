@@ -7,9 +7,9 @@ export const WebComponentHook = Object.freeze({
         const form = this.el.closest("form");
         form.addEventListener("formdata", event => {
             const editor = this.el.editor;
-            console.log(Array.from(event.formData.keys()));
+            console.log(this.el.getAttribute('name'), Array.from(event.formData.keys()));
             // console.log("formdata", this.el.editor);
-            event.formData.append('input', editor.getModel().getValue());
+            event.formData.append(this.el.getAttribute('name'), editor.getModel().getValue());
         }, { signal });
 
         // this.el.addEventListener("input", (event) => {

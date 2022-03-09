@@ -2,8 +2,8 @@ defmodule MiniModulesWeb.YieldMachineLive do
   use MiniModulesWeb, {:live_view, container: {:div, []}}
 
   alias Phoenix.LiveView.Socket
-  alias MiniModules.UniversalModules
-  alias MiniModules.Fetch
+  alias MiniModules.{UniversalModules, Fetch}
+  alias MiniModulesWeb.Input.CodeEditorComponent
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
@@ -14,6 +14,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
   # Pause to allow editing the events field.
   # Clear the events field to start again.
 
+  @impl true
   def render(assigns) do
     ~H"""
     <.form
@@ -23,13 +24,15 @@ defmodule MiniModulesWeb.YieldMachineLive do
       phx-change="changed"
       phx-submit="submit"
     >
-      <textarea
+      <CodeEditorComponent.monaco id="monaco-editor" input={@source} name="source" phx-keyup="source_enter_key"
+      phx-key="Enter" />
+      <!--<textarea
         name="source"
         rows={24}
         class="w-full font-mono bg-gray-800 text-white border border-gray-600"
         phx-keyup="source_enter_key"
         phx-key="Enter"
-      ><%= @source %></textarea>
+      ><%= @source %></textarea>-->
 
       <section class="block w-1/2 space-y-4">
         <textarea name="event_lines" rows={10} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @event_lines %></textarea>
@@ -122,6 +125,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
     }
   end
 
+  @impl true
   def mount(_parmas, _session, socket) do
     {:ok,
      assign(
@@ -139,6 +143,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
      )}
   end
 
+  @impl true
   def handle_event("changed", %{"source" => source, "event_lines" => event_lines}, socket) do
     IO.puts("changed")
     {:noreply, assign(socket, process(socket.assigns, source, event_lines))}
