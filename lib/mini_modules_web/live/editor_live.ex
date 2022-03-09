@@ -28,9 +28,6 @@ defmodule MiniModulesWeb.EditorLive do
 
   def render(assigns) do
     ~H"""
-    <form phx-change="changed">
-    </form>
-
     <.form
       for={:editor}
       id="editor-form"
@@ -119,7 +116,6 @@ defmodule MiniModulesWeb.EditorLive do
   def handle_event("changed", %{"input" => input}, socket) do
     IO.puts("CHANGE! #{input}")
     {:noreply, assign(socket, process(input))}
-    # {:noreply, socket}
   end
 
   def handle_event("load", %{"input" => input}, socket) do
