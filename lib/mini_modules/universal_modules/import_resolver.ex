@@ -2,6 +2,8 @@ defmodule MiniModules.UniversalModules.ImportResolver do
   defmodule Context do
     defstruct imported_modules: %{}, matched_statements: %{}, local_statements: %{}
 
+    alias MiniModules.UniversalModules.Lookup
+
     def from_module(module_body, loader) do
       import_sources =
         MapSet.new(for {:import, _identifiers, {:url, source}} <- module_body, do: source)
@@ -96,22 +98,8 @@ defmodule MiniModules.UniversalModules.ImportResolver do
 
     defp from_statement(_, _), do: []
 
-    defp identify({:export, {:const, name, _}}), do: name
-
-    defp identify({:export, {:function, name, _, _}}), do: name
-
-    defp identify({:export, {:generator_function, name, _, _}}), do: name
-
-    defp identify({:const, name, _}), do: name
-
-    defp identify({:function, name, _, _}), do: name
-
-    defp identify({:generator_function, name, _, _}), do: name
-
-    defp identify(_), do: nil
-
     defp lookup(identifiers, statement) do
-      identifier = identify(statement)
+      identifier = Lookup.identify(statement)
 
       case {identifier, statement, MapSet.member?(identifiers, identifier)} do
         {nil, _, _} ->
