@@ -70,27 +70,11 @@ defmodule MiniModulesWeb.EditorLive do
       end
 
     decoded =
-      case {load, decoded} do
-        {:load, {:ok, module}} ->
-          IO.inspect(module)
-          {:ok, module, _} =
-            UniversalModules.ImportResolver.transform(module, fn url ->
-              # TODO: add caching
-              %{done: true, data: data} = Fetch.Get.load(url)
-              # Process.sleep(1000)
-              case data do
-                nil ->
-                  {:error, {:did_not_load, url}}
-
-                data ->
-                  UniversalModules.Parser.decode(data)
-              end
-              # {:ok, [
-              #   {:export, {:const, "b", 6}}
-              # ]}
-            end)
-
-          {:ok, module}
+      case decoded do
+        {:ok, module} ->
+          {:ok, module, %{imported_modules: _imported_modules}} =
+            resolve_imports(load, module, %{})
+            {:ok, module}
 
         _ ->
           decoded
@@ -111,6 +95,30 @@ defmodule MiniModulesWeb.EditorLive do
       end
 
     %{input: input, result: result, error_message: error_message}
+  end
+
+  defp resolve_imports(action, module, previously_imported_modules) do
+    UniversalModules.ImportResolver.transform(module, fn url ->
+      case {previously_imported_modules, action} do
+        # Use previously loaded module.
+        {%{^url => loaded_module}, _} ->
+          {:ok, loaded_module}
+
+        # Otherwise, load if we are being asked to.
+        {_, :load} ->
+          case Fetch.Get.load(url) do
+            %{done: true, data: data} ->
+              UniversalModules.Parser.decode(data)
+
+            response ->
+              {:error, {:did_not_load, response}}
+          end
+
+        # Otherwise, returning nothing.
+        {_, _} ->
+          {:ok, nil}
+      end
+    end)
   end
 
   def handle_event("changed", %{"input" => input}, socket) do
