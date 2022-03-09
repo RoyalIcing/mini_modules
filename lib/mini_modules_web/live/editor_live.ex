@@ -44,8 +44,8 @@ defmodule MiniModulesWeb.EditorLive do
         <button type="submit" value="load">Load</button>
 
         <%= if @error_message do %>
-        <div role="alert" class="p-4 text-red-300">
-          <%= @error_message %>
+        <div role="alert" class="p-4 bg-red-900/20 text-red-800 border border-red-800/25">
+          <pre><%= @error_message %></pre>
         </div>
         <% end %>
 
@@ -107,7 +107,7 @@ defmodule MiniModulesWeb.EditorLive do
            }, nil}
 
         {:error, reason} ->
-          {nil, inspect(reason)}
+          {nil, inspect(reason, pretty: true)}
       end
 
     %{input: input, result: result, error_message: error_message}

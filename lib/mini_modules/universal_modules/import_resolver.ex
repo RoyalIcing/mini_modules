@@ -140,7 +140,9 @@ defmodule MiniModules.UniversalModules.ImportResolver do
             new_statement
           end
 
-        processed = Map.values(context.local_statements) ++ processed
+        # TODO: filter this based on whether these locals are actually referenced.
+        other_locals = Enum.reverse(Map.values(context.local_statements))
+        processed = other_locals ++ processed
 
         {:ok, processed, %{imported_modules: context.imported_modules}}
 

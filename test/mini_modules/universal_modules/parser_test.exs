@@ -216,12 +216,24 @@ defmodule MiniModules.ParserTest do
              """) == {:ok, [{:const, "root", {:url, "https://example.org"}}]}
     end
 
-    test "new URL with base" do
+    test "new URL with string base" do
       assert Parser.decode("""
              const aboutLink = new URL("/about", "https://example.org");
              """) ==
                {:ok,
                 [{:const, "aboutLink", {:url, [relative: "/about", base: "https://example.org"]}}]}
+    end
+
+    test "new URL with ref base" do
+      assert Parser.decode("""
+             const homeLink = new URL("https://example.org");
+             const aboutLink = new URL("/about", homeLink);
+             """) ==
+               {:ok,
+                [
+                  {:const, "homeLink", {:url, "https://example.org"}},
+                  {:const, "aboutLink", {:url, [relative: "/about", base: {:ref, "homeLink"}]}}
+                ]}
     end
 
     test "new Set" do

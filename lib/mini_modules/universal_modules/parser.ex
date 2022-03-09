@@ -478,28 +478,30 @@ defmodule MiniModules.UniversalModules.Parser do
     defp decode([], <<"new URL(", rest::bitstring>>) do
       with(
         {:ok, first, rest} when is_binary(first) <- decode([], rest),
-        rest = String.trim_leading(rest),
-        {:has_second, {:ok, second, rest}} <-
-          case rest do
-            <<")", rest::bitstring>> ->
-              {:ok, {:url, first}, rest}
-
-            <<",", second_raw::bitstring>> ->
-              {:has_second, decode([], second_raw)}
-
-            rest ->
-              {:error, {:expected_argument_or_closed, rest}}
-          end,
-        {:ok, second, rest} <-
-          case rest do
-            <<")", rest::bitstring>> ->
-              {:ok, second, rest}
-
-            rest ->
-              {:error, {:expected_closed, rest}}
-          end
+        rest = String.trim_leading(rest)
       ) do
-        {:ok, {:url, [relative: first, base: second]}, rest}
+        case rest do
+          <<")", rest::bitstring>> ->
+            {:ok, {:url, first}, rest}
+
+          <<",", second_raw::bitstring>> ->
+            case decode([], second_raw) do
+              {:ok, second, rest} ->
+                case String.trim_leading(rest) do
+                  <<")", rest::bitstring>> ->
+                    {:ok, {:url, [relative: first, base: second]}, rest}
+
+                  rest ->
+                    {:error, {:expected_close, rest}}
+                end
+
+              other ->
+                other
+            end
+
+          rest ->
+            {:error, {:expected_argument_or_close, rest}}
+        end
       end
     end
 
@@ -567,7 +569,8 @@ defmodule MiniModules.UniversalModules.Parser do
 
     defp decode(expression, <<"]", rest::bitstring>>), do: {:end_array, expression, rest}
 
-    defp decode(expression, <<")", rest::bitstring>>), do: {:end_param, expression, rest}
+    # defp decode(expression, <<")", rest::bitstring>>), do: {:end_param, expression, rest}
+    defp decode(expression, <<")", _::bitstring>> = input), do: {:ok, expression, input}
 
     # TODO: parse JSON by finding the end character followed by a semicolon + newline.
     # JSON strings cannoc contain literal newlines (it’s considered to be a control character),
@@ -648,12 +651,6 @@ defmodule MiniModules.UniversalModules.Parser do
       case decode([], input) do
         {:ok, value, rest} ->
           call(called, [value | args], rest)
-
-        {:hit_comma, value, rest} ->
-          call(called, [value | args], rest)
-
-        {:end_param, value, rest} ->
-          {:ok, {:call, called, [value | args] |> Enum.reverse()}, rest}
 
         {:error, error} ->
           {:error, error}

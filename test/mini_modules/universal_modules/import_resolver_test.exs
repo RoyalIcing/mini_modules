@@ -8,6 +8,8 @@ defmodule MiniModules.ImportResolverTest do
 
   @const_source Parser.decode(~S"""
                 export const pi = 3.14;
+                export const home = new URL("https://example.org");
+                export const about = new URL("/about", home);
                 """)
 
   @switch_source Parser.decode(~S"""
@@ -73,6 +75,8 @@ defmodule MiniModules.ImportResolverTest do
              end) ==
                {:ok,
                 [
+                  {:const, "home", {:url, "https://example.org"}},
+                  {:const, "about", {:url, [relative: "/about", base: {:ref, "home"}]}},
                   {:const, "enabled", false},
                   {:export, {:const, "pi", 3.14}},
                   {:export,
