@@ -8,6 +8,14 @@
   <pre><code class="lang-json"><%= @json_output %></code></pre>
 </article>
 
+<p><%= @example_html_sha %></p>
+
+<article class="mx-auto max-w-2xl py-8 text-sm leading-loose space-y-8">
+<%= raw(@example_html) %>
+</article>
+
+<%#= render "_code_example.html" %>
+
 <nav class="block mx-auto max-w-2xl py-8">
   <ul class="flex flex-col text-center text-3xl font-bold gap-4">
     <li><a href="/yieldparser" class="block p-8 text-purple-700 bg-purple-200 border border-purple-300 rounded hover:bg-purple-300 hover:border-purple-400">Parsing</a></li>

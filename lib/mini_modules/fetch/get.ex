@@ -46,6 +46,11 @@ defmodule MiniModules.Fetch.Get do
     result
   end
 
+  def load_text(url_string) when is_binary(url_string) do
+    %{data: data} = load(url_string)
+    data
+  end
+
   defp reduce_responses(url_string, responses, ref) do
     map =
       Enum.reduce(responses, %{}, fn
