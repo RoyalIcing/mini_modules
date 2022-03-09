@@ -1,0 +1,153 @@
+const monacoLoadPromise = new Promise(resolve => {
+    window.monacoDidLoad = resolve;
+});
+
+async function loadMonacoIfNeeded() {
+    const loaderURL = "https://unpkg.com/monaco-editor@latest/min/vs/loader.js";
+    const scriptEl = document.querySelector(`script[src="${loaderURL}]`);
+    if (scriptEl) {
+        await monacoLoadPromise;
+        return;
+    }
+
+    await new Promise(onload => {
+        document.body.appendChild(Object.assign(document.createElement('script'), {
+            // async: true,
+            // defer: true,
+            src: loaderURL,
+            onload
+        }))
+    });
+
+    document.body.appendChild(
+        Object.assign(document.createElement('script'), {
+            type: "module",
+            // async: true,
+            defer: true,
+            innerText: `
+            window.require.config({
+                paths: {
+                  'vs': 'https://unpkg.com/monaco-editor@latest/min/vs'
+                }
+              });
+              const proxy = URL.createObjectURL(new Blob([\`
+              self.MonacoEnvironment = {
+                baseUrl: 'https://unpkg.com/monaco-editor@latest/min/'
+              };
+              importScripts('https://unpkg.com/monaco-editor@latest/min/vs/base/worker/workerMain.js');
+            \`], { type: 'text/javascript' }));
+            
+            window.MonacoEnvironment = { getWorkerUrl: () => proxy };
+
+            window.require(["vs/editor/editor.main"], function () {
+                const typescript = monaco.languages.typescript;
+                for (const lang of [typescript.typescriptDefaults, typescript.javascriptDefaults]) {
+                  lang.setCompilerOptions({
+                    noSemanticValidation: true,
+                    noSyntaxValidation: false
+                  });
+                  lang.setCompilerOptions({
+                    target: monaco.languages.typescript.ScriptTarget.ESNext,
+                    allowNonTsExtensions: true,
+                    allowJs: true,
+                  });
+                  /* FIXME: types.then(([uri, content]) => lang.addExtraLib(content, uri)); */
+                }
+                window.monacoDidLoad();
+            });
+            `,
+        }));
+
+    await monacoLoadPromise;
+}
+
+customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditorElement extends HTMLElement {
+    constructor() {
+        super();
+        console.log("MiniModulesMonacoEditorElement constructor");
+        // this.attachShadow({ mode: 'open' });
+    }
+
+    static get observedAttributes() { return ['source']; }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'source') {
+            console.log("attributeChangedCallback", name);
+            if (this.editor) {
+                console.log("HAS EDITOR");
+                const model = this.editor.getModel();
+                if (model.getValue() !== newValue) {
+                    model.setValue(newValue);
+                }
+            } else {
+                if (this.loading) {
+                    return;
+                }
+                this.loading = true;
+
+                loadMonacoIfNeeded().then(() => {
+                    // console.log(this.ownerDocument);
+                    // const div = this.shadowRoot.ownerDocument.createElement('div');
+                    const div = this.ownerDocument.createElement('div');
+                    div.style.width = "100%";
+                    div.style.height = "100%";
+                    this.appendChild(div);
+                    this.editor = window.monaco.editor.create(div, {
+                        language: 'javascript',
+                        model: monaco.editor.createModel(newValue, 'javascript', 'ts:worker.ts'),
+                        // value: newValue,
+                        theme: 'vs-dark',
+                        fontSize: 16,
+                        wordWrap: 'on',
+                        automaticLayout: true,
+                        minimap: {
+                            enabled: false
+                        },
+                        scrollbar: {
+                            vertical: 'auto'
+                        },
+                        formatOnType: true,
+                        formatOnPaste: true,
+                    });
+                    this.editor.onDidChangeModelContent(() => {
+                        const value = this.editor.getValue();
+                        console.log("monaco did change", value);
+                        // const inputEl = this.querySelector('input[type="hidden"]');
+                        // console.log("monaco did change", value, inputEl);
+                        // this.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
+                        // this.pushEvent("changed", { input: value });
+                        // inputEl.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
+                        // inputEl.dispatchEvent(new CustomEvent('change', { value, bubbles: true, cancelable: true }));
+                    });
+                })
+            }
+        }
+    }
+});
+
+export const MonacoHook = {
+    async mounted() {
+        await loadMonacoIfNeeded();
+
+        const value = '// Hello World blah blah';
+
+        this.editor = window.monaco.editor.create(this.el, {
+            language: 'javascript',
+            model: monaco.editor.createModel(value, 'javascript', 'ts:worker.ts'),
+            value,
+            theme: 'vs-dark',
+            fontSize: 16,
+            minimap: {
+                enabled: false
+            },
+            formatOnType: true,
+            formatOnPaste: true,
+        });
+    },
+
+    destroyed() {
+        if (this.editor) {
+            this.editor.dispose();
+        }
+    },
+};
