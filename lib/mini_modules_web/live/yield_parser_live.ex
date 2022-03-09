@@ -28,17 +28,22 @@ defmodule MiniModulesWeb.YieldParserLive do
                    function* Home() {
                      yield "/";
                      yield mustEnd;
-                     return ["Home"];
+                     return [200, "Home"];
                    }
 
                    function* About() {
                      yield "/about";
                      yield mustEnd;
-                     return ["About"];
+                     return [200, "About"];
+                   }
+
+                   function* NotFound() {
+                     const [path] = yield /^.+$/;
+                     return [404, "Not Found", path];
                    }
 
                    export function* Router() {
-                     const route = yield [Home, About];
+                     const route = yield [Home, About, NotFound];
                      yield mustEnd;
                      return route;
                    }
