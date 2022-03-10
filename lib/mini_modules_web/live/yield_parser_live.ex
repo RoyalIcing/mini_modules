@@ -37,13 +37,26 @@ defmodule MiniModulesWeb.YieldParserLive do
                      return [200, "About"];
                    }
 
+                   function* BlogHome() {
+                     yield "/blog";
+                     yield mustEnd;
+                     return [200, "Blog"];
+                   }
+
+                   function* BlogArticle() {
+                     yield "/blog/";
+                     const [slug] = yield /^.+$/;
+                     yield mustEnd;
+                     return [200, "Blog", slug];
+                   }
+
                    function* NotFound() {
                      const [path] = yield /^.+$/;
                      return [404, "Not Found", path];
                    }
 
                    export function* Router() {
-                     const route = yield [Home, About, NotFound];
+                     const route = yield [Home, About, BlogHome, BlogArticle, NotFound];
                      yield mustEnd;
                      return route;
                    }
