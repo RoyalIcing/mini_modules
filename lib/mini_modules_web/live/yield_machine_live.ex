@@ -36,6 +36,11 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
       <section class="block w-1/2 space-y-4">
         <textarea name="event_lines" rows={10} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @event_lines %></textarea>
+        <%= if @mode == :idle do %>
+          <button type="button" phx-click="start_timer">Start Timer</button>
+        <% else %>
+          <button type="button" phx-click="stop_timer">Stop Timer</button>
+        <% end %>
         <%= if @error_message do %>
           <div role="alert" class="text-red-300">
             <%= @error_message %>
@@ -68,7 +73,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
     |> String.split([" ", "\n", "\r"], trim: true)
     |> Enum.map(fn s ->
       case Float.parse(s) do
-        {n, ""} when n < 100_000 ->
+        {n, ""} when n < 1_000_000 ->
           n
 
         _ ->
@@ -133,6 +138,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       end
 
     %{
+      mode: assigns[:mode] || :idle,
       source: source,
       state: state,
       clock: clock,
@@ -170,5 +176,65 @@ defmodule MiniModulesWeb.YieldMachineLive do
   def handle_event("source_enter_key", %{"value" => source}, socket) do
     IO.puts("source_enter_key")
     {:noreply, assign(socket, process(socket.assigns, source, socket.assigns.event_lines, :load))}
+  end
+
+  @timer_interval 1000
+
+  def handle_event("start_timer", _, socket) do
+    IO.puts("start_timer")
+    {:ok, timer_ref} = :timer.send_interval(@timer_interval, self(), :timer_tick)
+    socket = socket |> assign(mode: {:timer, timer_ref})
+    {:noreply, socket}
+  end
+
+  def handle_event("stop_timer", _, socket) do
+    IO.puts("stop_timer #{inspect(socket.assigns.mode)}")
+    socket =
+      case socket.assigns.mode do
+        {:timer, timer_ref} ->
+          :timer.cancel(timer_ref)
+          socket |> assign(mode: :idle)
+
+        _ ->
+          socket
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(:timer_tick, %Socket{assigns: %{event_lines: event_lines}} = socket) do
+    IO.puts("timer_tick")
+    event_lines = event_lines |> String.split([" ", "\n", "\r"], trim: true) |> Enum.reverse()
+
+    {last_event, event_lines} =
+      case event_lines do
+        [last_event | reversed_events] ->
+          {last_event, reversed_events |> Enum.reverse()}
+
+        [] ->
+          {"0", []}
+      end
+
+    event_lines =
+      case Float.parse(last_event) do
+        {n, ""} ->
+          event_lines ++ [format_float(n + @timer_interval)]
+
+        _ ->
+          event_lines ++ [last_event, format_float(@timer_interval)]
+      end
+
+    IO.inspect(event_lines)
+
+    event_lines = Enum.join(event_lines, "\n")
+    socket = socket |> assign(event_lines: event_lines)
+    assigns = process(socket.assigns, socket.assigns.source, socket.assigns.event_lines, :load)
+    socket = assign(socket, assigns)
+    {:noreply, socket}
+  end
+
+  defp format_float(f) do
+    :erlang.float_to_binary(f / 1, [{:decimals, 0}, :compact])
   end
 end
