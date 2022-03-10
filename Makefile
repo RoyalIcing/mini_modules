@@ -23,6 +23,7 @@ TEMPLATE_MARKDOWN := $(wildcard lib/mini_modules_web/templates/**/*.md)
 $(TEMPLATE_MARKDOWN):
 	@echo $(firstword $(shell shasum -a 256 $@))
 	aws s3 cp $@ s3://collected-workspaces/sha256/text/markdown/$(firstword $(shell shasum -a 256 $@)) --acl public-read
+	
 
 .PHONY: templates
 templates: $(TEMPLATE_MARKDOWN)
