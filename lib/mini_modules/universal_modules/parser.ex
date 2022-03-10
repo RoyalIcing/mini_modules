@@ -552,22 +552,16 @@ defmodule MiniModules.UniversalModules.Parser do
         {:ok, value, rest} ->
           decode({:array, [value | items]}, rest)
 
-        {:hit_comma, value, rest} ->
-          decode({:array, [value | items]}, rest)
-
-        {:end_array, value, rest} ->
-          {:ok, [value | items] |> Enum.reverse(), rest}
-
         {:error, error} ->
           {:error, error}
       end
     end
 
-    defp decode(expression, <<",", rest::bitstring>>), do: {:hit_comma, expression, rest}
+    defp decode(expression, <<",", _::bitstring>> = input), do: {:ok, expression, input}
 
     defp decode(expression, <<"\n", rest::bitstring>>), do: decode(expression, rest)
 
-    defp decode(expression, <<"]", rest::bitstring>>), do: {:end_array, expression, rest}
+    defp decode(expression, <<"]", _::bitstring>> = input), do: {:ok, expression, input}
 
     # defp decode(expression, <<")", rest::bitstring>>), do: {:end_param, expression, rest}
     defp decode(expression, <<")", _::bitstring>> = input), do: {:ok, expression, input}
