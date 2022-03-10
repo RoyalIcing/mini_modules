@@ -5,6 +5,7 @@ export const dateFormat = "YYYY/MM/DD";
 export const isEnabled = true;
 export const flavors = ["vanilla", "chocolate", "caramel", "raspberry"];
 
+// Generate URLs:
 export const homeURL = new URL("https://example.org/");
 export const aboutURL = new URL("/about", homeURL);
 export const blogURL = new URL("/blog/", homeURL);
