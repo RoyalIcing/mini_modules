@@ -4,8 +4,6 @@ defmodule MiniModulesWeb.LandingController do
   alias MiniModules.UniversalModules
   alias MiniModules.Fetch.Get
 
-  @hello 2
-
   @example_module_code Get.load_text(
                          "https://collected.press/1/s3/highlight/us-west-2/collected-workspaces/sha256/application/javascript/bbdf5c799fb70e05161702a437381fe3ee4aa7c480bcb19902e9767e78a171f1"
                        )
