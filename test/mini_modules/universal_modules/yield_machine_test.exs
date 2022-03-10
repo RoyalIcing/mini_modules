@@ -3,7 +3,6 @@ defmodule MiniModules.YieldMachineTest do
 
   alias MiniModules.UniversalModules.YieldMachine
   alias MiniModules.UniversalModules.Parser
-  alias MiniModules.UniversalModules.ImportResolver
 
   doctest YieldMachine
 
@@ -20,6 +19,26 @@ defmodule MiniModules.YieldMachineTest do
                  }
                  """)
   @switch_expected_components [{"Off", "FLICK", "On"}, {"On", "FLICK", "Off"}]
+
+  @switch_timer_source Parser.decode(~S"""
+                       export function Switch() {
+                         function* Off() {
+                           yield on(3, On);
+                           yield on("short", Disabled)
+                         }
+                         function* On() {
+                           yield on(4, Off);
+                         }
+                         function* Disabled() {}
+
+                         return Off;
+                       }
+                       """)
+  @switch_timer_expected_components [
+    {"Off", 3000, "On"},
+    {"Off", "short", "Disabled"},
+    {"On", 4000, "Off"}
+  ]
 
   @advanced_switch_source Parser.decode(~S"""
                           export function Switch() {
@@ -44,25 +63,14 @@ defmodule MiniModules.YieldMachineTest do
     {"On", "SHORT", "CircuitBreakerTripped"}
   ]
 
-  # @imported_switch_source with(
-  #                           {:ok, result} <-
-  #                             Parser.decode(~S"""
-  #                             import { Switch } from "https://example.org/switch-machine.js";
-  #                             export { Switch };
-  #                             """),
-  #                           do:
-  #                             ImportResolver.transform(result, fn
-  #                               "https://example.org/switch-machine.js" -> @switch_source
-  #                               _ -> :error
-  #                             end)
-  #                         )
-
   setup_all do
     {:ok, switch_module} = @switch_source
+    {:ok, switch_timer_module} = @switch_timer_source
     {:ok, advanced_switch_module} = @advanced_switch_source
 
     [
       switch_module: switch_module,
+      switch_timer_module: switch_timer_module,
       advanced_switch_module: advanced_switch_module
     ]
   end
@@ -70,7 +78,13 @@ defmodule MiniModules.YieldMachineTest do
   describe "interpret_machine/1" do
     test "returns initial state", %{switch_module: switch_module} do
       assert YieldMachine.interpret_machine(switch_module) ==
-               {:ok, %{current: "Off", components: @switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "Off",
+                  components: @switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
     end
   end
 
@@ -80,30 +94,78 @@ defmodule MiniModules.YieldMachineTest do
       advanced_switch_module: advanced_switch_module
     } do
       assert YieldMachine.interpret_machine(switch_module, ["FLICK"]) ==
-               {:ok, %{current: "On", components: @switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "On",
+                  components: @switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
 
       assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK"]) ==
-               {:ok, %{current: "Off", components: @switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "Off",
+                  components: @switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
 
       assert YieldMachine.interpret_machine(switch_module, ["FLICK", "FLICK", "FLICK"]) ==
-               {:ok, %{current: "On", components: @switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "On",
+                  components: @switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
 
       assert YieldMachine.interpret_machine(advanced_switch_module, ["FLICK"]) ==
-               {:ok, %{current: "On", components: @advanced_switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "On",
+                  components: @advanced_switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
 
       assert YieldMachine.interpret_machine(advanced_switch_module, ["FLICK", "FLICK"]) ==
-               {:ok, %{current: "Off", components: @advanced_switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "Off",
+                  components: @advanced_switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
 
       assert YieldMachine.interpret_machine(advanced_switch_module, ["FLICK", "FLICK", "FLICK"]) ==
-               {:ok, %{current: "On", components: @advanced_switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "On",
+                  components: @advanced_switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
     end
 
     test "ignores unknown events", %{switch_module: switch_module} do
       assert YieldMachine.interpret_machine(switch_module, ["BLAH"]) ==
-               {:ok, %{current: "Off", components: @switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "Off",
+                  components: @switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
 
       assert YieldMachine.interpret_machine(switch_module, ["BLAH", "FLICK"]) ==
-               {:ok, %{current: "On", components: @switch_expected_components}}
+               {:ok,
+                %YieldMachine.State{
+                  current: "On",
+                  components: @switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
 
       assert YieldMachine.interpret_machine(switch_module, [
                "BLAH",
@@ -111,7 +173,84 @@ defmodule MiniModules.YieldMachineTest do
                "FOO",
                "BLAH",
                "FLICK"
-             ]) == {:ok, %{current: "Off", components: @switch_expected_components}}
+             ]) ==
+               {:ok,
+                %YieldMachine.State{
+                  current: "Off",
+                  components: @switch_expected_components,
+                  overall_clock: 0,
+                  local_clock: 0
+                }}
+    end
+
+    test "recognizes time events", %{
+      switch_timer_module: switch_timer_module
+    } do
+      off_state = %YieldMachine.State{
+        current: "Off",
+        components: @switch_timer_expected_components
+      }
+
+      on_state = %YieldMachine.State{
+        current: "On",
+        components: @switch_timer_expected_components
+      }
+
+      disabled_state = %YieldMachine.State{
+        current: "Disabled",
+        components: @switch_timer_expected_components
+      }
+
+      assert YieldMachine.interpret_machine(switch_timer_module, []) ==
+               {:ok, %{off_state | overall_clock: 0, local_clock: 0}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [0]) ==
+               {:ok, %{off_state | overall_clock: 0, local_clock: 0}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [1000]) ==
+               {:ok, %{off_state | overall_clock: 1000, local_clock: 1000}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [1000, "short"]) ==
+               {:ok, %{disabled_state | overall_clock: 1000, local_clock: 0}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [2000]) ==
+               {:ok, %{off_state | overall_clock: 2000, local_clock: 2000}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [2999]) ==
+               {:ok, %{off_state | overall_clock: 2999, local_clock: 2999}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [2998, 1]) ==
+               {:ok, %{off_state | overall_clock: 2999, local_clock: 2999}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [3000]) ==
+               {:ok, %{on_state | overall_clock: 3000, local_clock: 0}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [2999, 1]) ==
+               {:ok, %{on_state | overall_clock: 3000, local_clock: 0}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [3001]) ==
+               {:ok, %{on_state | overall_clock: 3001, local_clock: 1}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [3002]) ==
+               {:ok, %{on_state | overall_clock: 3002, local_clock: 2}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [6999]) ==
+               {:ok, %{on_state | overall_clock: 6999, local_clock: 3999}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [6998, 1]) ==
+               {:ok, %{on_state | overall_clock: 6999, local_clock: 3999}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [7000]) ==
+               {:ok, %{off_state | overall_clock: 7000, local_clock: 0}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [6999, 1]) ==
+               {:ok, %{off_state | overall_clock: 7000, local_clock: 0}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [7001]) ==
+               {:ok, %{off_state | overall_clock: 7001, local_clock: 1}}
+
+      assert YieldMachine.interpret_machine(switch_timer_module, [6999, 1, 1]) ==
+               {:ok, %{off_state | overall_clock: 7001, local_clock: 1}}
     end
   end
 end

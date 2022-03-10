@@ -42,7 +42,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
           </div>
         <% end %>
         <%= if @state do %>
-          <output class="block text-center">Currently <strong><%= @state %></strong></output>
+          <output class="block text-center">Currently <strong><%= @state %></strong> after <strong><%= @clock / 1000 %></strong>s</output>
           <mermaid-image source={render_mermaid(@state, @components)} class="block bg-white text-center">
           </mermaid-image>
         <% end %>
@@ -55,9 +55,26 @@ defmodule MiniModulesWeb.YieldMachineLive do
   defp render_mermaid(state, components) do
     """
     graph TB
-    #{for {from, event, to} <- components, do: "#{from}-->|#{event}|#{to}\n"}
+    #{for {from, event, to} <- components, do: "#{from}-->|#{format_event(event)}|#{to}\n"}
     style #{state} fill:#222,color:#ffde00
     """
+  end
+
+  defp format_event(event) when is_binary(event), do: event
+  defp format_event(event) when is_number(event), do: event / 1000
+
+  defp parse_event_lines(event_lines) do
+    event_lines
+    |> String.split([" ", "\n", "\r"], trim: true)
+    |> Enum.map(fn s ->
+      case Float.parse(s) do
+        {n, ""} when n < 100_000 ->
+          n
+
+        _ ->
+          s
+      end
+    end)
   end
 
   defp process(assigns, source, event_lines, load \\ nil) do
@@ -98,26 +115,27 @@ defmodule MiniModulesWeb.YieldMachineLive do
           {decoded, imported_modules}
       end
 
-    events = String.split(event_lines, [" ", "\n", "\r"], trim: true)
+    events = parse_event_lines(event_lines)
 
-    {state, components, error_message} =
+    {state, clock, components, error_message} =
       case decoded do
         {:ok, elements} ->
           case UniversalModules.YieldMachine.interpret_machine(elements, events) do
-            {:ok, %{current: state, components: components}} ->
-              {state, components, nil}
+            {:ok, %{current: state, overall_clock: clock, components: components}} ->
+              {state, clock, components, nil}
 
             {:error, reason} ->
-              {nil, nil, inspect(reason)}
+              {nil, nil, nil, inspect(reason)}
           end
 
         {:error, reason} ->
-          {nil, nil, inspect(reason)}
+          {nil, nil, nil, inspect(reason)}
       end
 
     %{
       source: source,
       state: state,
+      clock: clock,
       event_lines: event_lines,
       error_message: error_message,
       components: components,
