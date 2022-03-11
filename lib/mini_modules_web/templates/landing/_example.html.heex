@@ -1,28 +1,41 @@
-<pre><code class="hljs language-js"><span class="hljs-comment">// Use constants:</span>
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> pi = <span class="hljs-number">3.14159265</span>;
+<p>Use constants:</p>
+<pre><code class="hljs language-js"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> pi = <span class="hljs-number">3.14159265</span>;
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> dateFormat = <span class="hljs-string">&quot;YYYY/MM/DD&quot;</span>;
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> isEnabled = <span class="hljs-literal">true</span>;
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> flavors = [<span class="hljs-string">&quot;vanilla&quot;</span>, <span class="hljs-string">&quot;chocolate&quot;</span>, <span class="hljs-string">&quot;caramel&quot;</span>, <span class="hljs-string">&quot;raspberry&quot;</span>];
-
-<span class="hljs-comment">// Generate URLs:</span>
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> homeURL = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;https://example.org/&quot;</span>);
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> aboutURL = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;/about&quot;</span>, homeURL);
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> blogURL = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;/blog/&quot;</span>, homeURL);
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> firstArticle = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;./first-article&quot;</span>, blogURL);
 </code></pre>
 <pre><code class="hljs language-json">{
-  <span class="hljs-attr">&quot;aboutURL&quot;</span>: <span class="hljs-string">&quot;https://example.org/about&quot;</span>,
-  <span class="hljs-attr">&quot;blogURL&quot;</span>: <span class="hljs-string">&quot;https://example.org/blog/&quot;</span>,
+  <span class="hljs-attr">&quot;pi&quot;</span>: <span class="hljs-number">3.14159265</span>,
   <span class="hljs-attr">&quot;dateFormat&quot;</span>: <span class="hljs-string">&quot;YYYY/MM/DD&quot;</span>,
-  <span class="hljs-attr">&quot;firstArticle&quot;</span>: <span class="hljs-string">&quot;https://example.org/blog/first-article&quot;</span>,
+  <span class="hljs-attr">&quot;isEnabled&quot;</span>: <span class="hljs-literal">true</span>,
   <span class="hljs-attr">&quot;flavors&quot;</span>: [
     <span class="hljs-string">&quot;vanilla&quot;</span>,
     <span class="hljs-string">&quot;chocolate&quot;</span>,
     <span class="hljs-string">&quot;caramel&quot;</span>,
     <span class="hljs-string">&quot;raspberry&quot;</span>
-  ],
+  ]
+}
+</code></pre>
+<p>Build URLs:</p>
+<pre><code class="hljs language-js"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> homeURL = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;https://example.org/&quot;</span>);
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> aboutURL = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;/about&quot;</span>, homeURL);
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> blogURL = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;/blog/&quot;</span>, homeURL);
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> firstArticle = <span class="hljs-keyword">new</span> URL(<span class="hljs-string">&quot;./first-article&quot;</span>, blogURL);
+</code></pre>
+<pre><code class="hljs language-json">{
   <span class="hljs-attr">&quot;homeURL&quot;</span>: <span class="hljs-string">&quot;https://example.org/&quot;</span>,
-  <span class="hljs-attr">&quot;isEnabled&quot;</span>: <span class="hljs-literal">true</span>,
-  <span class="hljs-attr">&quot;pi&quot;</span>: <span class="hljs-number">3.14159265</span>
+  <span class="hljs-attr">&quot;aboutURL&quot;</span>: <span class="hljs-string">&quot;https://example.org/about&quot;</span>,
+  <span class="hljs-attr">&quot;blogURL&quot;</span>: <span class="hljs-string">&quot;https://example.org/blog/&quot;</span>,
+  <span class="hljs-attr">&quot;firstArticle&quot;</span>: <span class="hljs-string">&quot;https://example.org/blog/first-article&quot;</span>
+}
+</code></pre>
+<p>Import modules:</p>
+<pre><code class="hljs language-js"><span class="hljs-keyword">import</span> { pi, homeURL } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;https://gist.github.com/BurntCaramel/d9d2ca7ed6f056632696709a2ae3c413/raw&quot;</span>;
+<span class="hljs-keyword">export</span> { pi };
+<span class="hljs-keyword">export</span> { homeURL };
+</code></pre>
+<pre><code class="hljs language-json">{
+  <span class="hljs-attr">&quot;pi&quot;</span>: <span class="hljs-number">3.14159265</span>,
+  <span class="hljs-attr">&quot;homeURL&quot;</span>: <span class="hljs-string">&quot;https://example.org/&quot;</span>
 }
 </code></pre>

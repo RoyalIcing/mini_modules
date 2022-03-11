@@ -7,12 +7,25 @@
 <%= render("_example.html") %>
 </article>
 
-<nav class="block mx-auto max-w-2xl py-8">
+<nav class="block mx-auto max-w-2xl pt-8 pb-24">
+  <div class="prose lg:prose-xl mb-8">
+    <h3 class="text-center">Examples</h3>
+  </div>
   <ul class="flex flex-col text-center text-3xl font-bold gap-4">
     <li><a href="/yieldparser" class="block p-8 text-purple-700 bg-purple-200 border border-purple-300 rounded hover:bg-purple-300 hover:border-purple-400">Parsing</a></li>
     <li><a href="/yieldmachine" class="block p-8 text-emerald-700 bg-emerald-200 border border-emerald-300 rounded hover:bg-emerald-300 hover:border-emerald-400">State Machine</a></li>
   </ul>
 </nav>
+
+<div class="prose lg:prose-xl mx-auto max-w-2xl">
+  <h3>MiniModules work in:</h3>
+  <ul>
+    <li><%= "Natively as a subset of TypeScript & JavaScript" %></li>
+    <li><%= "Elixir" %></li>
+    <li><%= "Swift (soon)" %></li>
+    <li><%= "Go (soon)" %></li>
+  </ul>
+</div>
 
 <dl class="block mx-auto text-center max-w-2xl py-8">
   <dt>cf.json</dt>
