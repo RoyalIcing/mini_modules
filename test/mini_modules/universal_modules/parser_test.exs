@@ -254,6 +254,12 @@ defmodule MiniModules.ParserTest do
              """) == {:ok, [{:const, "key", {:symbol, "special"}}]}
     end
 
+    test "new Error" do
+      assert Parser.decode("""
+             const oops = new Error("No network connection");
+             """) == {:ok, [{:const, "oops", {:error, "No network connection"}}]}
+    end
+
     test "import names" do
       assert Parser.decode("""
              import { a } from "https://first.org";

@@ -475,6 +475,20 @@ defmodule MiniModules.UniversalModules.Parser do
       end
     end
 
+    defp decode([], <<"new Error()", rest::bitstring>>), do: decode({:error, nil}, rest)
+
+    defp decode([], <<"new Error(", rest::bitstring>>) do
+      [encoded_json, rest] = String.split(rest, ");\n", parts: 2)
+
+      case Jason.decode(encoded_json) do
+        {:ok, value} ->
+          {:ok, {:error, value}, rest}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+
     defp decode([], <<"new URL(", rest::bitstring>>) do
       with(
         {:ok, first, rest} when is_binary(first) <- decode([], rest),
