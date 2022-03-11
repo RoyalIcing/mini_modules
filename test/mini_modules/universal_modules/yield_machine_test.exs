@@ -63,15 +63,49 @@ defmodule MiniModules.YieldMachineTest do
     {"On", "SHORT", "CircuitBreakerTripped"}
   ]
 
+  @snake_game Parser.decode(~S"""
+              export function Snake() {
+                function* HeadedNorth() {
+                    yield on("left", HeadedWest);
+                    yield on("right", HeadedEast);
+                }
+                function* HeadedWest() {
+                    yield on("up", HeadedNorth);
+                    yield on("down", HeadedSouth);
+                }
+                function* HeadedEast() {
+                    yield on("up", HeadedNorth);
+                    yield on("down", HeadedSouth);
+                }
+                function* HeadedSouth() {
+                    yield on("left", HeadedWest);
+                    yield on("right", HeadedEast);
+                }
+                return HeadedEast;
+              }
+              """)
+  @snake_game_components [
+    {"HeadedEast", "up", "HeadedNorth"},
+    {"HeadedEast", "down", "HeadedSouth"},
+    {"HeadedNorth", "left", "HeadedWest"},
+    {"HeadedNorth", "right", "HeadedEast"},
+    {"HeadedSouth", "left", "HeadedWest"},
+    {"HeadedSouth", "right", "HeadedEast"},
+    {"HeadedWest", "up", "HeadedNorth"},
+    {"HeadedWest", "down", "HeadedSouth"}
+  ]
+
   setup_all do
     {:ok, switch_module} = @switch_source
     {:ok, switch_timer_module} = @switch_timer_source
     {:ok, advanced_switch_module} = @advanced_switch_source
+    {:ok, snake_game} = @snake_game
 
     [
       switch_module: switch_module,
       switch_timer_module: switch_timer_module,
-      advanced_switch_module: advanced_switch_module
+      advanced_switch_module: advanced_switch_module,
+      snake_game: snake_game
     ]
   end
 
@@ -251,6 +285,28 @@ defmodule MiniModules.YieldMachineTest do
 
       assert YieldMachine.interpret_machine(switch_timer_module, [6999, 1, 1]) ==
                {:ok, %{off_state | overall_clock: 7001, local_clock: 1}}
+    end
+
+    test "snake game", %{snake_game: snake_game} do
+      headed_east = %YieldMachine.State{
+        current: "HeadedEast",
+        components: @snake_game_components,
+        overall_clock: 0,
+        local_clock: 0
+      }
+      headed_north = %YieldMachine.State{
+        current: "HeadedNorth",
+        components: @snake_game_components,
+        overall_clock: 0,
+        local_clock: 0
+      }
+
+      assert YieldMachine.interpret_machine(snake_game, []) ==
+               {:ok, headed_east}
+      assert YieldMachine.interpret_machine(snake_game, ["up"]) ==
+               {:ok, headed_north}
+      assert YieldMachine.interpret_machine(snake_game, ["up", "right"]) ==
+               {:ok, headed_east}
     end
   end
 end

@@ -189,6 +189,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   def handle_event("stop_timer", _, socket) do
     IO.puts("stop_timer #{inspect(socket.assigns.mode)}")
+
     socket =
       case socket.assigns.mode do
         {:timer, timer_ref} ->
