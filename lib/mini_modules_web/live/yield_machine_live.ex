@@ -7,6 +7,46 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
+  @example_traffic_lights {~S"""
+                           export function* TrafficLights() {
+                             function* Green() {
+                               yield on("timer", Yellow);
+                             }
+                             function* Yellow() {
+                               yield on("timer", Red);
+                             }
+                             function* Red() {
+                               yield on("timer", Green);
+                             }
+
+                             return Red;
+                           }
+
+                           """, "timer\ntimer\ntimer"}
+
+  @example_traffic_lights_timed {~S"""
+                                 export function* TrafficLights() {
+                                   function* Green() {
+                                     yield on(3, Yellow);
+                                   }
+                                   function* Yellow() {
+                                     yield on(3, Red);
+                                   }
+                                   function* Red() {
+                                     yield on(3, Green);
+                                   }
+
+                                   return Red;
+                                 }
+
+                                 """, "0"}
+
+  @example_import_traffic_lights {~S"""
+                                  import { TrafficLights } from "https://gist.githubusercontent.com/BurntCaramel/38fb200b9f32087e1d222b638b5957b2/raw";
+
+                                  export { TrafficLights };
+                                  """, "timer\ntimer\ntimer"}
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -17,8 +57,20 @@ defmodule MiniModulesWeb.YieldMachineLive do
       phx-change="changed"
       phx-submit="submit"
     >
-      <CodeEditorComponent.monaco id="monaco-editor" input={@source} name="source" phx-keyup="source_enter_key"
-      phx-key="Enter" />
+      <div class="w-full">
+        <CodeEditorComponent.monaco
+          id="monaco-editor"
+          input={@source}
+          name="source"
+          phx-keyup="source_enter_key"
+          phx-key="Enter"
+        />
+        <div class="px-4 py-2 space-x-8">
+        <button type="button" phx-click="example_traffic_lights">Traffic Lights</button>
+        <button type="button" phx-click="example_traffic_lights_timed">Traffic Lights Timed</button>
+        <button type="button" phx-click="example_import_traffic_lights">Import Traffic Lights</button>
+        </div>
+      </div>
       <!--<textarea
         name="source"
         rows={24}
@@ -144,20 +196,20 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   @impl true
   def mount(_parmas, _session, socket) do
-    {:ok,
-     assign(
-       socket,
-       process(
-         socket.assigns,
-         ~S"""
-         import { TrafficLights } from "https://gist.githubusercontent.com/BurntCaramel/38fb200b9f32087e1d222b638b5957b2/raw";
+    {source, event_lines} = @example_traffic_lights
 
-         export { TrafficLights };
-         """,
-         "timer\ntimer\ntimer",
-         :load
-       )
-     )}
+    socket =
+      socket
+      |> assign(
+        process(
+          socket.assigns,
+          source,
+          event_lines,
+          :load
+        )
+      )
+
+    {:ok, socket}
   end
 
   @impl true
@@ -196,6 +248,11 @@ defmodule MiniModulesWeb.YieldMachineLive do
     {:noreply, socket}
   end
 
+  def handle_event("example_" <> name, _value, socket) do
+    socket = use_example(name, socket)
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info(:timer_tick, %Socket{assigns: %{event_lines: event_lines}} = socket) do
     IO.puts("timer_tick")
@@ -230,5 +287,19 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   defp format_float(f) do
     :erlang.float_to_binary(f / 1, [{:decimals, 0}, :compact])
+  end
+
+  defp use_example("traffic_lights", socket = %Socket{}),
+    do: reset_content(@example_traffic_lights, socket)
+
+  defp use_example("traffic_lights_timed", socket = %Socket{}),
+    do: reset_content(@example_traffic_lights_timed, socket)
+
+  defp use_example("import_traffic_lights", socket = %Socket{}),
+    do: reset_content(@example_import_traffic_lights, socket)
+
+  defp reset_content({source, event_lines}, socket = %Socket{}) do
+    socket
+    |> assign(process(socket.assigns, source, event_lines, :load))
   end
 end
