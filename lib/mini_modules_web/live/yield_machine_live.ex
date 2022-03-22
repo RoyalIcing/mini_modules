@@ -7,13 +7,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
-  # TODO:
-  # Allow timing events with integer events: e.g. "5" for 5 seconds passing
-  # Show 'Start' button that starts a timer.
-  # Each second the last line increments by 1 second.
-  # Pause to allow editing the events field.
-  # Clear the events field to start again.
-
   @impl true
   def render(assigns) do
     ~H"""
