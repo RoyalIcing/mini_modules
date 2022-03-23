@@ -40,6 +40,7 @@ defmodule MiniModules.MixProject do
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.6"},
       {:esbuild, "~> 0.3", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.3"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
@@ -49,7 +50,6 @@ defmodule MiniModules.MixProject do
       {:unicode_guards, "~> 1.0"},
       {:castore, "~> 0.1.0"},
       {:mint, "~> 1.0"},
-      {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
       {:heroicons, "~> 0.3.0"},
       {:benchee, "~> 1.0", only: [:dev, :test]}
     ]

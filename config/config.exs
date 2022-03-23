@@ -44,7 +44,7 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
-config :tailwind, version: "3.0.18", default: [
+config :tailwind, version: "3.0.23", default: [
   args: ~w(
     --config=tailwind.config.js
     --input=css/app.css
