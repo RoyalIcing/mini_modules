@@ -4,6 +4,12 @@
 
 :root {}
 
+/* Let Tailwind prose and Night Owl be happy */
+.prose pre {
+  padding: 0;
+  background: transparent;
+}
+
 /* This file is for your main application CSS */
 
 /* Alerts and form errors used by phx.new */
