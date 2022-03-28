@@ -1,11 +1,15 @@
 ## Use constants:
 
+You write:
+
 ```js
 export const pi = 3.14159265;
 export const dateFormat = "YYYY/MM/DD";
 export const isEnabled = true;
 export const flavors = ["vanilla", "chocolate", "caramel", "raspberry"];
 ```
+
+Then convert to JSON:
 
 ```json
 {
@@ -23,12 +27,16 @@ export const flavors = ["vanilla", "chocolate", "caramel", "raspberry"];
 
 ## Build URLs:
 
+Build URLs using JavaScript’s convenient URL constructor:
+
 ```js
 export const homeURL = new URL("https://example.org/");
 export const aboutURL = new URL("/about", homeURL);
 export const blogURL = new URL("/blog/", homeURL);
 export const firstArticle = new URL("./first-article", blogURL);
 ```
+
+Convert to JSON:
 
 ```json
 {
@@ -41,11 +49,15 @@ export const firstArticle = new URL("./first-article", blogURL);
 
 ## Import modules:
 
+Share code by putting it online, and then import it in:
+
 ```js
 import { pi, homeURL } from "https://gist.github.com/BurntCaramel/d9d2ca7ed6f056632696709a2ae3c413/raw";
 export { pi };
 export { homeURL };
 ```
+
+Resolve and convert to JSON:
 
 ```json
 {
