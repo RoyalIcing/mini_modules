@@ -21,6 +21,8 @@
         <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
           <li><%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home) %></li>
         <% end %>
+        <li role="separator" class="mx-auto"></li>
+        <li><a href="https://github.com/RoyalIcing/mini_modules">Source on GitHub</a></li>
       </ul>
     </nav>
     <%= @inner_content %>
