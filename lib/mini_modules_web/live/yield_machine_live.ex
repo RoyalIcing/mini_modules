@@ -47,6 +47,17 @@ defmodule MiniModulesWeb.YieldMachineLive do
                                   export { TrafficLights };
                                   """, "timer\ntimer\ntimer"}
 
+  @example_aborter {~S"""
+                 export function* Aborter() {
+                   function* Initial() {
+                     yield on("abort", Aborted);
+                   }
+                   function* Aborted() {}
+
+                   return Initial;
+                 }
+                 """, "5000\nabort"}
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -69,6 +80,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
         <button type="button" phx-click="example_traffic_lights">Traffic Lights</button>
         <button type="button" phx-click="example_traffic_lights_timed">Traffic Lights Timed</button>
         <button type="button" phx-click="example_import_traffic_lights">Import Traffic Lights</button>
+        <button type="button" phx-click="example_aborter">Aborter</button>
         </div>
       </div>
       <!--<textarea
@@ -297,6 +309,9 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   defp use_example("import_traffic_lights", socket = %Socket{}),
     do: reset_content(@example_import_traffic_lights, socket)
+
+  defp use_example("aborter", socket = %Socket{}),
+    do: reset_content(@example_aborter, socket)
 
   defp reset_content({source, event_lines}, socket = %Socket{}) do
     socket
