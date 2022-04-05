@@ -48,15 +48,28 @@ defmodule MiniModulesWeb.YieldMachineLive do
                                   """, "timer\ntimer\ntimer"}
 
   @example_aborter {~S"""
-                 export function* Aborter() {
-                   function* Initial() {
-                     yield on("abort", Aborted);
-                   }
-                   function* Aborted() {}
+                    export function* Aborter() {
+                      function* Initial() {
+                        yield on("abort", Aborted);
+                      }
+                      function* Aborted() {}
 
-                   return Initial;
-                 }
-                 """, "5000\nabort"}
+                      return Initial;
+                    }
+                    """, "5000\nabort"}
+
+  @example_promise {~S"""
+                    export function* PromiseMachine() {
+                      function* Pending() {
+                        yield on("resolve", Resolved);
+                        yield on("reject", Rejected);
+                      }
+                      function* Resolved() {}
+                      function* Rejected() {}
+
+                      return Pending;
+                    }
+                    """, "5000\nresolve"}
 
   @impl true
   def render(assigns) do
@@ -81,6 +94,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
         <button type="button" phx-click="example_traffic_lights_timed">Traffic Lights Timed</button>
         <button type="button" phx-click="example_import_traffic_lights">Import Traffic Lights</button>
         <button type="button" phx-click="example_aborter">Aborter</button>
+        <button type="button" phx-click="example_promise">Promise</button>
         </div>
       </div>
       <!--<textarea
@@ -312,6 +326,9 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   defp use_example("aborter", socket = %Socket{}),
     do: reset_content(@example_aborter, socket)
+
+  defp use_example("promise", socket = %Socket{}),
+    do: reset_content(@example_promise, socket)
 
   defp reset_content({source, event_lines}, socket = %Socket{}) do
     socket
