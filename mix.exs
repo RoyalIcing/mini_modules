@@ -51,6 +51,7 @@ defmodule MiniModules.MixProject do
       {:castore, "~> 0.1.0"},
       {:mint, "~> 1.0"},
       {:heroicons, "~> 0.3.0"},
+      {:exqlite, "~> 0.10.3"},
       {:benchee, "~> 1.0", only: [:dev, :test]}
     ]
   end

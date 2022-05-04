@@ -22,6 +22,7 @@ defmodule MiniModulesWeb.Router do
     get "/editor", EditorController, :index
     live "/yieldparser", YieldParserLive, :index
     live "/yieldmachine", YieldMachineLive, :index
+    live "/sqlite", SQLiteLive, :index
     live "/live-editor", EditorLive, :index
   end
 

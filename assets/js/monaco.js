@@ -6,6 +6,7 @@ async function loadMonacoIfNeeded() {
     const loaderURL = "https://unpkg.com/monaco-editor@latest/min/vs/loader.js";
     const scriptEl = document.querySelector(`script[src="${loaderURL}]`);
     if (scriptEl) {
+        // We have already starting loading.
         await monacoLoadPromise;
         return;
     }
