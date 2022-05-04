@@ -84,6 +84,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       <div class="w-full">
         <CodeEditorComponent.monaco
           id="monaco-editor"
+          change_clock={@change_clock}
           input={@source}
           name="source"
           phx-keyup="source_enter_key"
@@ -226,6 +227,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
     socket =
       socket
+      |> assign(:change_clock, 0)
       |> assign(
         process(
           socket.assigns,
@@ -333,5 +335,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
   defp reset_content({source, event_lines}, socket = %Socket{}) do
     socket
     |> assign(process(socket.assigns, source, event_lines, :load))
+    |> assign(:change_clock, socket.assigns.change_clock + 1)
   end
 end

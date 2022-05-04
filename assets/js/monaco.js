@@ -68,17 +68,26 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
         // this.attachShadow({ mode: 'open' });
     }
 
-    static get observedAttributes() { return ['source']; }
+    static get observedAttributes() { return ['source', 'change-clock']; }
 
     attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'change-clock' && oldValue !== newValue) {
+            if (!this.editor) return;
+
+            const source = this.getAttribute('source');
+            const model = this.editor.getModel();
+            if (model.getValue() !== source) {
+                model.setValue(source);
+            }
+        }
         if (name === 'source') {
             console.log("attributeChangedCallback", name);
             if (this.editor) {
                 console.log("HAS EDITOR");
                 const model = this.editor.getModel();
-                if (model.getValue() !== newValue) {
-                    model.setValue(newValue);
-                }
+                // if (model.getValue() !== newValue) {
+                //     model.setValue(newValue);
+                // }
             } else {
                 if (this.loading) {
                     return;
