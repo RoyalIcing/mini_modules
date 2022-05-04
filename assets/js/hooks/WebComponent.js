@@ -6,6 +6,7 @@ export const WebComponentHook = Object.freeze({
 
         const form = this.el.closest("form");
         form.addEventListener("formdata", event => {
+            // FIXME: this only works with the monaco editor
             const editor = this.el.editor;
             console.log(this.el.getAttribute('name'), Array.from(event.formData.keys()));
             // console.log("formdata", this.el.editor);

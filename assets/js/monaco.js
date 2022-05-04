@@ -89,65 +89,69 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
                 //     model.setValue(newValue);
                 // }
             } else {
-                if (this.loading) {
-                    return;
-                }
-                this.loading = true;
-
-                loadMonacoIfNeeded().then(() => {
-                    // console.log(this.ownerDocument);
-                    // const div = this.shadowRoot.ownerDocument.createElement('div');
-                    const div = this.ownerDocument.createElement('div');
-                    div.style.width = "100%";
-                    div.style.height = "100%";
-                    this.appendChild(div);
-                    this.editor = window.monaco.editor.create(div, {
-                        language: 'javascript',
-                        model: monaco.editor.createModel(newValue, 'javascript', 'ts:worker.ts'),
-                        // value: newValue,
-                        theme: 'vs-dark',
-                        fontSize: 16,
-                        wordWrap: 'on',
-                        automaticLayout: true,
-                        minimap: {
-                            enabled: false
-                        },
-                        scrollbar: {
-                            vertical: 'auto'
-                        },
-                        formatOnType: true,
-                        formatOnPaste: true,
-                    });
-                    this.editor.onDidChangeModelContent(() => {
-                        const value = this.editor.getValue();
-                        console.log("monaco did change", value);
-
-                        if (this.hasAttribute('name')) {
-                            const form = this.closest("form");
-                            if (form) {
-                                new FormData(form);
-                            }
-                        }
-                        // const inputEl = this.querySelector('input[type="hidden"]');
-                        // console.log("monaco did change", value, inputEl);
-                        // this.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
-                        // this.pushEvent("changed", { input: value });
-                        // inputEl.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
-                        // inputEl.dispatchEvent(new CustomEvent('change', { value, bubbles: true, cancelable: true }));
-                    });
-
-                    // const resizeObserver = new ResizeObserver((entries) => {
-                    //     entries.forEach((entry) => {
-                    //         // Ignore hidden container.
-                    //         if (this.offsetHeight > 0) {
-                    //             this.editor.layout();
-                    //         }
-                    //     });
-                    // });
-                    // resizeObserver.observe(window);
-                })
+                this.loadIfNeeded(newValue);
             }
         }
+    }
+
+    loadIfNeeded(source) {
+        if (this.loading) {
+            return;
+        }
+        this.loading = true;
+
+        loadMonacoIfNeeded().then(() => {
+            // console.log(this.ownerDocument);
+            // const div = this.shadowRoot.ownerDocument.createElement('div');
+            const div = this.ownerDocument.createElement('div');
+            div.style.width = "100%";
+            div.style.height = "100%";
+            this.appendChild(div);
+            this.editor = window.monaco.editor.create(div, {
+                language: 'javascript',
+                model: monaco.editor.createModel(source, 'javascript', 'ts:worker.ts'),
+                // value: newValue,
+                theme: 'vs-dark',
+                fontSize: 16,
+                wordWrap: 'on',
+                automaticLayout: true,
+                minimap: {
+                    enabled: false
+                },
+                scrollbar: {
+                    vertical: 'auto'
+                },
+                formatOnType: true,
+                formatOnPaste: true,
+            });
+            this.editor.onDidChangeModelContent(() => {
+                const value = this.editor.getValue();
+                console.log("monaco did change", value);
+
+                if (this.hasAttribute('name')) {
+                    const form = this.closest("form");
+                    if (form) {
+                        new FormData(form);
+                    }
+                }
+                // const inputEl = this.querySelector('input[type="hidden"]');
+                // console.log("monaco did change", value, inputEl);
+                // this.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
+                // this.pushEvent("changed", { input: value });
+                // inputEl.dispatchEvent(new CustomEvent('input', { value, bubbles: true, cancelable: true }));
+                // inputEl.dispatchEvent(new CustomEvent('change', { value, bubbles: true, cancelable: true }));
+            });
+
+            // const resizeObserver = new ResizeObserver((entries) => {
+            //     entries.forEach((entry) => {
+            //         // Ignore hidden container.
+            //         if (this.offsetHeight > 0) {
+            //             this.editor.layout();
+            //         }
+            //     });
+            // });
+            // resizeObserver.observe(window);
+        })
     }
 });
 
