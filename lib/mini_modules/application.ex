@@ -16,7 +16,7 @@ defmodule MiniModules.Application do
       MiniModulesWeb.Endpoint,
       # Start a worker by calling: MiniModules.Worker.start_link(arg)
       # {MiniModules.Worker, arg}
-      {Registry, keys: :unique, name: MiniModules.DatabaseRegistry},
+      {Registry, keys: :unique, name: MiniModules.DatabaseRegistry}, # TODO: add listeners to handle cleanup
       {DynamicSupervisor, strategy: :one_for_one, name: MiniModules.DatabaseSupervisor}
     ]
 
