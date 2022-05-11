@@ -11,12 +11,13 @@ async function loadMonacoIfNeeded() {
         return;
     }
 
-    await new Promise(onload => {
+    await new Promise((onload, onerror) => {
         document.body.appendChild(Object.assign(document.createElement('script'), {
             // async: true,
             // defer: true,
             src: loaderURL,
-            onload
+            onload,
+            onerror
         }))
     });
 
@@ -102,6 +103,7 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
         this.loading = true;
 
         loadMonacoIfNeeded().then(() => {
+            const language = this.getAttribute('language') || 'javascript';
             // console.log(this.ownerDocument);
             // const div = this.shadowRoot.ownerDocument.createElement('div');
             const div = this.ownerDocument.createElement('div');
@@ -109,8 +111,8 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
             div.style.height = "100%";
             this.appendChild(div);
             this.editor = window.monaco.editor.create(div, {
-                language: 'javascript',
-                model: monaco.editor.createModel(source, 'javascript', 'ts:worker.ts'),
+                language,
+                model: monaco.editor.createModel(source, language, 'ts:worker.ts'),
                 // value: newValue,
                 theme: 'vs-dark',
                 fontSize: 16,
