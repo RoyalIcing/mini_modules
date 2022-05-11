@@ -13,9 +13,11 @@ defmodule MiniModules.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: MiniModules.PubSub},
       # Start the Endpoint (http/https)
-      MiniModulesWeb.Endpoint
+      MiniModulesWeb.Endpoint,
       # Start a worker by calling: MiniModules.Worker.start_link(arg)
       # {MiniModules.Worker, arg}
+      {Registry, keys: :unique, name: MiniModules.DatabaseRegistry},
+      {DynamicSupervisor, strategy: :one_for_one, name: MiniModules.DatabaseSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

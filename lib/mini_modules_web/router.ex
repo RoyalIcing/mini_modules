@@ -24,6 +24,8 @@ defmodule MiniModulesWeb.Router do
     live "/yieldmachine", YieldMachineLive, :index
     live "/sqlite", SQLiteLive, :index
     live "/live-editor", EditorLive, :index
+
+    live "/database/:database_id", DatabaseLive, :index
   end
 
   # Other scopes may use custom stacks.

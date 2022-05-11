@@ -85,12 +85,13 @@ defmodule MiniModulesWeb.SQLiteLive do
         <CodeEditorComponent.monaco
           id="monaco-editor"
           change_clock={@change_clock}
+          language="sql"
           input={@source}
           name="source"
           phx-keyup="source_enter_key"
           phx-key="Enter"
         />
-        <textarea name="query" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @query %></textarea>
+        <textarea name="query" rows={8} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @query %></textarea>
         <div class="px-4 py-2 space-x-8">
         <button type="button" phx-click="example_traffic_lights">Traffic Lights</button>
         <button type="button" phx-click="example_traffic_lights_timed">Traffic Lights Timed</button>
@@ -178,7 +179,7 @@ defmodule MiniModulesWeb.SQLiteLive do
   end
 
   @impl true
-  def mount(_parmas, _session, socket) do
+  def mount(_params, _session, socket) do
     {source, event_lines} = @example_traffic_lights
 
     socket =
