@@ -9,6 +9,24 @@ defmodule MiniModulesWeb.DatabaseLive do
 
   alias MiniModules.DatabaseAgent, as: Model
 
+  defp fetch_data(socket) do
+    model_pid = socket.assigns[:model_pid]
+    table_name = socket.assigns[:table_name]
+
+    current = Model.get_current!(model_pid)
+
+    list_table =
+      case table_name do
+        nil ->
+          nil
+
+        s ->
+          Model.list_table(model_pid, s)
+      end
+
+    socket |> assign(%{current: current, list_table: list_table})
+  end
+
   @impl true
   def mount(%{"database_id" => database_id} = params, _session, socket) do
     table_name = params["table_name"]
@@ -22,27 +40,29 @@ defmodule MiniModulesWeb.DatabaseLive do
           pid
       end
 
-    current = Model.get_current!(model_pid)
+    # current = Model.get_current!(model_pid)
 
-    list_table =
-      case table_name do
-        nil ->
-          nil
+    # list_table =
+    #   case table_name do
+    #     nil ->
+    #       nil
 
-        s ->
-          Model.list_table(model_pid, s)
-      end
+    #     s ->
+    #       Model.list_table(model_pid, s)
+    #   end
 
     socket =
       socket
       |> assign(:database_id, database_id)
       |> assign(:table_name, table_name)
       |> assign(:model_pid, model_pid)
-      |> assign(:current, current)
+      # |> assign(:current, current)
       |> assign(:error, nil)
       |> assign(:query_result, nil)
-      |> assign(:list_table, list_table)
+      # |> assign(:list_table, list_table)
       |> assign(:changed_rows, nil)
+
+    socket = fetch_data(socket)
 
     {:ok, socket}
   end
@@ -142,6 +162,8 @@ defmodule MiniModulesWeb.DatabaseLive do
           socket |> assign(:error, reason)
       end
 
+    socket = fetch_data(socket)
+
     {:noreply, socket}
   end
 end
@@ -178,8 +200,8 @@ defmodule MiniModules.DatabaseAgent do
   def handle_call({:run_query, query, bindings}, _from, %{db_conn: db_conn} = state) do
     with {:ok, statement} <- Exqlite.Sqlite3.prepare(db_conn, query),
          :ok <- Exqlite.Sqlite3.bind(db_conn, statement, bindings),
-         {:ok, rows} = Exqlite.Sqlite3.fetch_all(db_conn, statement),
-         {:ok, columns} = Exqlite.Sqlite3.columns(db_conn, statement) do
+         {:ok, rows} <- Exqlite.Sqlite3.fetch_all(db_conn, statement),
+         {:ok, columns} <- Exqlite.Sqlite3.columns(db_conn, statement) do
       {:reply, {:ok, {columns, rows}}, state}
     else
       {:error, reason} ->
