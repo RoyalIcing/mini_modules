@@ -26,6 +26,7 @@ defmodule MiniModulesWeb.Router do
     live "/live-editor", EditorLive, :index
 
     live "/database/:database_id", DatabaseLive, :index
+    live "/database/:database_id/:table_name", DatabaseLive, :index
   end
 
   # Other scopes may use custom stacks.
