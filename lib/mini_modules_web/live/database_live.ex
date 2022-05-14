@@ -113,9 +113,6 @@ defmodule MiniModulesWeb.DatabaseLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <form class="mt-4 px-4 pb-4 flex gap-2">
-      <button type="button" phx-click="create_table_sqlar" class="px-2 bg-gray-100 border rounded shadow-sm">Create SQL Archive Table</button>
-    </form>
     <div class="text-right opacity-50">debug <%= inspect(@database_id) %> <%= inspect(@model_pid) %></div>
 
     <form id="sql-form" phx-submit="submit_query" class="mb-4">
@@ -173,6 +170,9 @@ defmodule MiniModulesWeb.DatabaseLive do
               </li>
             <% end %>
           </ul>
+          <form class="pt-8 px-4 pb-4 flex gap-2">
+            <button type="button" phx-click="create_table_sqlar" class="px-2 bg-gray-100 border rounded shadow-sm">Create SQL Archive Table</button>
+          </form>
         </nav>
       <% end %>
 
@@ -227,42 +227,9 @@ defmodule MiniModulesWeb.DatabaseLive do
   defp get_rows({:ok, {_cols, rows}}), do: rows
   defp get_rows(_), do: []
 
-  @impl true
-  def handle_event("increment", _, socket) do
-    Model.increment(socket.assigns.model_pid)
-    {:noreply, socket}
-  end
-
-  def handle_event("reload", _, socket) do
-    current = Model.get_current!(socket.assigns.model_pid)
-    socket = socket |> assign(:current, current)
-    {:noreply, socket}
-  end
-
-  def handle_event("show_tables", _, socket) do
-    {:ok, result} = Model.show_tables!(socket.assigns.model_pid)
-    socket = socket |> assign(:query_result, result)
-    {:noreply, socket}
-  end
-
-  def handle_event("create_table_sqlar", _, socket) do
+  defp execute_statements(sql, socket) do
     socket =
-      case Model.create_table_sqlar!(socket.assigns.model_pid) do
-        {:ok, changes} ->
-          socket |> assign(:changed_rows, changes)
-
-        {:error, reason} = result ->
-          socket |> assign(:query_result, result)
-      end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("submit_query", %{"type" => "statements", "query" => query} = payload, socket) do
-    IO.inspect(payload)
-
-    socket =
-      case Model.execute_statements(socket.assigns.model_pid, query) do
+      case Model.execute_statements(socket.assigns.model_pid, sql) do
         {:error, _reason} = result ->
           socket |> assign(:query_result, result)
 
@@ -275,14 +242,44 @@ defmodule MiniModulesWeb.DatabaseLive do
     {:noreply, socket}
   end
 
-  def handle_event("submit_query", %{"query" => query} = payload, socket) do
-    IO.inspect(payload)
-    result = Model.run_query(socket.assigns.model_pid, query)
+  defp run_query(sql, socket) do
+    result = Model.run_query(socket.assigns.model_pid, sql)
     socket = socket |> assign(%{query_result: result})
     socket = refresh_data(socket)
 
     {:noreply, socket}
   end
+
+  @impl true
+  def handle_event("increment", _, socket) do
+    Model.increment(socket.assigns.model_pid)
+    {:noreply, socket}
+  end
+
+  def handle_event("reload", _, socket) do
+    current = Model.get_current!(socket.assigns.model_pid)
+    socket = socket |> assign(:current, current)
+    {:noreply, socket}
+  end
+
+  def handle_event("create_table_sqlar", _, socket) do
+    socket =
+      case Model.create_table_sqlar!(socket.assigns.model_pid) do
+        {:ok, changes} ->
+          socket |> assign(:changed_rows, changes)
+
+        {:error, _reason} = result ->
+          socket |> assign(:query_result, result)
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("submit_query", %{"type" => "statements", "query" => sql}, socket),
+    do: execute_statements(sql, socket)
+
+  def handle_event("submit_query", %{"query" => sql}, socket),
+    do: run_query(sql, socket)
 end
 
 defmodule MiniModules.DatabaseAgent do
