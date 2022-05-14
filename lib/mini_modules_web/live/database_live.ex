@@ -35,11 +35,15 @@ defmodule MiniModulesWeb.DatabaseLive do
   end
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(%{"database_id" => database_id}, _session, socket) do
     socket =
       socket
       |> assign(:query_result, nil)
       |> assign(:changed_rows, nil)
+
+    if connected?(socket) do
+      Model.subscribe(database_id)
+    end
 
     {:ok, socket}
   end
@@ -58,14 +62,7 @@ defmodule MiniModulesWeb.DatabaseLive do
   def handle_params(%{"database_id" => database_id} = params, _uri, socket) do
     table_name = params["table_name"]
 
-    model_pid =
-      case Model.start(database_id) do
-        {:ok, pid} ->
-          pid
-
-        {:error, {:already_started, pid}} ->
-          pid
-      end
+    model_pid = Model.start_dynamic(database_id)
 
     current_path = path_to(database_id, table_name)
     database_path = path_to(database_id, nil)
@@ -113,9 +110,9 @@ defmodule MiniModulesWeb.DatabaseLive do
     ~H"""
     <div class="text-right opacity-50">debug <%= inspect(@database_id) %> <%= inspect(@model_pid) %></div>
 
-    <form id="sql-form" phx-submit="submit_query" class="mb-4">
+    <form id="sql-form" phx-submit="submit_query" class="pb-4 px-6 bg-gray-50">
       <textarea id="query-textbox" name="query" cols="60" rows="6" placeholder="Enter SQL…" phx-update="ignore" class="w-full font-mono text-lg text-blue-800 border"></textarea>
-      <div class="flex px-4 gap-4 items-center">
+      <div class="flex gap-4 items-center">
         <button type="submit" phx-disable-with="Running..." class="px-2 text-lg text-white bg-blue-600 border border-blue-700 rounded" name="query" value="query">Run</button>
         <fieldset class="flex gap-4">
           <label><input type="radio" name="type" value="query" checked> Read-only Query</label>
@@ -133,7 +130,7 @@ defmodule MiniModulesWeb.DatabaseLive do
     </form>
 
     <%= if ok?(@query_result) do %>
-      <section aria-labelledby="result-success-heading" class="flex-1 pl-8 pt-4 bg-green-100">
+      <section aria-labelledby="result-success-heading" class="flex-1 pl-6 pt-4 pb-4 bg-green-100">
         <details open>
           <summary class="block cursor-pointer">
             <h2 id="result-success-heading" class="pb-4 text-sm uppercase font-bold text-green-600">Results</h2>
@@ -145,21 +142,23 @@ defmodule MiniModulesWeb.DatabaseLive do
       </section>
     <% end %>
     <%= if @changed_rows && false do %>
-      <output class="block p-4 bg-green-200"><%= @changed_rows %> rows changed</output>
+      <output class="block px-6 py-4 bg-green-200"><%= @changed_rows %> rows changed</output>
     <% end %>
     <%= if error?(@query_result) do %>
-      <output class="block p-4 bg-red-200">
+      <output class="block px-6 py-4 bg-red-200">
         <h2 id="result-error-heading" class="pb-4 text-sm uppercase font-bold text-red-700">Error</h2>
-        <%= inspect(@query_result) %>
+        <div class="prose lg:prose-lg">
+          <%= inspect(@query_result) %>
+        </div>
       </output>
     <% end %>
 
-    <section aria-label="Tables" class="flex w-full divide-x border-t">
+    <section aria-label="Tables" class="flex w-full divide-x border-t border-gray-400">
       <%= if @all_tables do %>
         <nav aria-labelledby="all-tables-heading" class="w-full min-h-screen max-w-sm pt-4 bg-gray-50">
           <ul>
             <li>
-              <.table_link database_id={@database_id} current_path={@current_path}>Database <%= @database_id %></.table_link>
+              <.table_link database_id={@database_id} current_path={@current_path}>Database info</.table_link>
             </li>
           </ul>
           <h2 id="all-tables-heading" class="pl-6 pr-4 py-4 text-sm uppercase font-bold text-gray-500">Tables</h2>
@@ -285,24 +284,38 @@ defmodule MiniModulesWeb.DatabaseLive do
 
   def handle_event("submit_query", %{"query" => sql}, socket),
     do: run_query(sql, socket)
+
+  @impl true
+  def handle_info({Model, _}, socket) do
+    IO.puts("MODEL CHANGED!!!!")
+    socket = refresh_data(socket)
+    {:noreply, socket}
+  end
 end
 
 defmodule MiniModules.DatabaseAgent do
   use GenServer
+
+  @pubsub MiniModules.PubSub
 
   @select_all_tables "SELECT tbl_name, sql FROM sqlite_master WHERE type = 'table'"
   @create_table_sqlar """
   CREATE TABLE sqlar(name TEXT PRIMARY KEY, mode INT, mtime INT, sz INT, data BLOB)
   """
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, 0, options)
+  def start_link(database_id) do
+    IO.puts("start_link")
+    IO.inspect(database_id)
+    GenServer.start_link(__MODULE__, %{database_id: database_id}, name: process_name(database_id))
   end
 
+  defp process_name(database_id),
+    do: {:via, Registry, {MiniModules.DatabaseRegistry, database_id}}
+
   @impl true
-  def init(n) do
+  def init(%{database_id: database_id}) do
     {:ok, db_conn} = Exqlite.Sqlite3.open(":memory:")
-    {:ok, %{n: n, db_conn: db_conn}}
+    {:ok, %{n: 0, database_id: database_id, db_conn: db_conn}}
   end
 
   defp internal_run_query(db_conn, query, bindings) do
@@ -332,15 +345,17 @@ defmodule MiniModules.DatabaseAgent do
 
   @impl true
   def handle_call({:run_query, query, bindings}, _from, %{db_conn: db_conn} = state) do
+    IO.inspect(Process.get())
     result = internal_run_query(db_conn, query, bindings)
     {:reply, result, state}
   end
 
   @impl true
-  def handle_call({:execute, sql}, _from, %{db_conn: db_conn} = state) do
+  def handle_call({:execute, sql}, _from, %{db_conn: db_conn, database_id: database_id} = state) do
     case Exqlite.Sqlite3.execute(db_conn, sql) do
       :ok ->
         changes = Exqlite.Sqlite3.changes(db_conn)
+        broadcast(database_id)
         {:reply, {:ok, changes}, state}
 
       {:error, _reason} = result ->
@@ -376,11 +391,23 @@ defmodule MiniModules.DatabaseAgent do
     Exqlite.Sqlite3.close(db_conn)
   end
 
-  def start(name) do
-    DynamicSupervisor.start_child(
-      MiniModules.DatabaseSupervisor,
-      {__MODULE__, name: {:via, Registry, {MiniModules.DatabaseRegistry, name}}}
-    )
+  # TODO: move somewhere else
+  # https://thoughtbot.com/blog/how-to-start-processes-with-dynamic-names-in-elixir
+  def start_dynamic(database_id) do
+    result =
+      DynamicSupervisor.start_child(
+        MiniModules.DatabaseSupervisor,
+        {__MODULE__, database_id}
+        # {__MODULE__, name: {:via, Registry, {MiniModules.DatabaseRegistry, database_id, database_id}}}
+      )
+
+    case result do
+      {:ok, pid} ->
+        pid
+
+      {:error, {:already_started, pid}} ->
+        pid
+    end
   end
 
   def get_current!(pid) do
@@ -409,5 +436,16 @@ defmodule MiniModules.DatabaseAgent do
 
   def increment(pid) do
     GenServer.cast(pid, :increment)
+  end
+
+  defp topic(database_id), do: "database:#{database_id}"
+
+  def subscribe(database_id) do
+    Phoenix.PubSub.subscribe(@pubsub, topic(database_id))
+  end
+
+  defp broadcast(database_id, change \\ nil) do
+    IO.puts("broadcast #{database_id}")
+    Phoenix.PubSub.local_broadcast(@pubsub, topic(database_id), {__MODULE__, change})
   end
 end
