@@ -200,6 +200,7 @@ require(["vs/editor/editor.main"], function () {
     language: 'html',
     value: '',
     theme,
+    wordWrap: 'on',
     readOnly: true,
     minimap: {
       enabled: false
@@ -309,7 +310,8 @@ require(["vs/editor/editor.main"], function () {
       .then(({ code, codeBytes, duration }) => {
         console.log("NEW CODE!");
         const hookNames = Object.keys(window.React).filter(name => name.startsWith('use'));
-        const preamble = hookNames.map(hookName => `const ${hookName} = window.React.${hookName}`).join(';');
+        const reactGlobals = hookNames.concat(['Fragment']);
+        const preamble = reactGlobals.map(property => `const ${property} = window.React.${property}`).join(';');
         const executor = new Function(`${preamble}; ${code}; return exports.Example();`);
         const renderServer = executor();
         return new Map()
@@ -370,13 +372,15 @@ require(["vs/editor/editor.main"], function () {
   });
 });
 </script>
-<output id=status class="block text-xs opacity-50"></output>
-<div class="flex">
-  <output id=result class="block text-xs">
-    <div class="text-red-500"><slot name=error></slot></div>
-    <div>It took esbuild <slot name=esbuildMs></slot> a <slot name=esbuildBytes></slot></div>
-  </output>
-  <div id="clientResult" class="ml-auto text-xs"><slot name=reactRenderDuration></slot></div>
+<div class="px-4 pb-2 text-white bg-gray-900">
+  <output id=status class="block text-xs opacity-50"></output>
+  <div class="flex">
+    <output id=result class="block text-xs">
+      <div class="text-red-500"><slot name=error></slot></div>
+      <div>It took esbuild <slot name=esbuildMs></slot> a <slot name=esbuildBytes></slot></div>
+    </output>
+    <div id="clientResult" class="ml-auto text-xs"><slot name=reactRenderDuration></slot></div>
+  </div>
 </div>
 <div class="flex-container" id="container" style="display: flex; min-height: 100vh;">
   <div id="input" style="flex: 1;"></div>
