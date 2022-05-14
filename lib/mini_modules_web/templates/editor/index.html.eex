@@ -1,8 +1,8 @@
 <!-- See https://www.sanity.io/guides/server-side-rendering-deno-react -->
 
-<script src="https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.profiling.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.profiling.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom-server.browser.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.1.0/umd/react.profiling.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.1.0/umd/react-dom.profiling.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.1.0/umd/react-dom-server.browser.production.min.js"></script>
 
 <script src="https://unpkg.com/monaco-editor@latest/min/vs/loader.js"></script>
 
@@ -10,13 +10,13 @@
 <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>-->
 
 <script type="module">
-//import React, { useReducer, useCallback, useEffect, useState, useMemo } from "https://jspm.dev/react@17.0.2";
-//import ReactDOM from "https://jspm.dev/react-dom@17.0.2/profiling";
-//import ReactDOMServer from "https://jspm.dev/react-dom@17.0.2/server";
+//import React, { useReducer, useCallback, useEffect, useState, useMemo } from "https://jspm.dev/react@18.1.0";
+//import ReactDOM from "https://jspm.dev/react-dom@18.1.0/profiling";
+//import ReactDOMServer from "https://jspm.dev/react-dom@18.1.0/server";
 
 console.log("react", window.React);
-//import ReactDOM from "https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.profiling.min.js/+esm";
-//import "https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom-server.browser.production.min.js";
+//import ReactDOM from "https://cdn.jsdelivr.net/npm/react-dom@18.1.0/umd/react-dom.profiling.min.js/+esm";
+//import "https://cdn.jsdelivr.net/npm/react-dom@18.1.0/umd/react-dom-server.browser.production.min.js";
 
 import * as esbuild from "https://cdn.jsdelivr.net/npm/esbuild-wasm@0.14.17/esm/browser.min.js";
 const esbuildPromise = Promise.resolve(esbuild.initialize({
@@ -52,12 +52,12 @@ export function Example() {
 `.trim();
 
 const prefix = `
-//import React from "https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.profiling.min.js/+esm";
-//import ReactDOM from "https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.profiling.min.js/+esm";
-//import ReactDOMServer from "https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom-server.profiling.min.js/+esm";
-import React, { useReducer, useCallback, useEffect, useState, useMemo } from "https://jspm.dev/react@17.0.2";
-import ReactDOM from "https://jspm.dev/react-dom@17.0.2/profiling";
-import ReactDOMServer from "https://jspm.dev/react-dom@17.0.2/server";
+//import React from "https://cdn.jsdelivr.net/npm/react@18.1.0/umd/react.profiling.min.js/+esm";
+//import ReactDOM from "https://cdn.jsdelivr.net/npm/react-dom@18.1.0/umd/react-dom.profiling.min.js/+esm";
+//import ReactDOMServer from "https://cdn.jsdelivr.net/npm/react-dom@18.1.0/umd/react-dom-server.profiling.min.js/+esm";
+import React, { useReducer, useCallback, useEffect, useState, useMemo } from "https://jspm.dev/react@18.1.0";
+import ReactDOM from "https://jspm.dev/react-dom@18.1.0/profiling";
+import ReactDOMServer from "https://jspm.dev/react-dom@18.1.0/server";
 `;
 
 const suffix = `
@@ -178,9 +178,17 @@ require(["vs/editor/editor.main"], function () {
     model: monaco.editor.createModel(value, 'typescript', 'ts:worker.ts'),
     value,
     theme,
+    fontSize: 16,
+    wordWrap: 'on',
+    automaticLayout: true,
     minimap: {
       enabled: false
-    }
+    },
+    scrollbar: {
+      vertical: 'auto'
+    },
+    formatOnType: true,
+    formatOnPaste: true,
   });
   const htmlOutput = monaco.editor.create(document.getElementById('htmlOutput'), {
     language: 'html',
@@ -353,7 +361,7 @@ require(["vs/editor/editor.main"], function () {
 <div class="flex">
   <output id=result class="block text-xs">
     <div class="text-red-500"><slot name=error></slot></div>
-    <div>esbuild: <slot name=esbuildMs></slot> into a <slot name=esbuildBytes></slot></div>
+    <div>It took esbuild <slot name=esbuildMs></slot> a <slot name=esbuildBytes></slot></div>
   </output>
   <div id="clientResult" class="ml-auto text-xs"><slot name=reactRenderDuration></slot></div>
 </div>

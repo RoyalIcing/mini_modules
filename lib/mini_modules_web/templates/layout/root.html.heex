@@ -16,8 +16,8 @@
         <li><a href="/">Home</a></li>
         <li><a href="/yieldparser">Yield Parser</a></li>
         <li><a href="/yieldmachine">Yield Machine</a></li>
+        <li><a href="/editor">React</a></li>
         <li><a href="/live-editor">Live Editor</a></li>
-        <li><a href="/editor">Browser Editor</a></li>
         <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
           <li><%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home) %></li>
         <% end %>
