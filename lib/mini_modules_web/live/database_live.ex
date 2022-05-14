@@ -172,6 +172,15 @@ defmodule MiniModulesWeb.DatabaseLive do
         </nav>
       <% end %>
 
+      <%= if @table_name == nil do %>
+        <div class="flex-1 pl-8 pt-4 prose lg:prose-lg">
+          <dl>
+            <dt class="font-bold">Database ID</dt>
+            <dd><%= @database_id %></dd>
+          </dl>
+        </div>
+      <% end %>
+
       <%= if @list_table do %>
         <div class="flex-1 pl-8 pt-4 prose lg:prose-lg">
           <h1><%= @table_name %></h1>
