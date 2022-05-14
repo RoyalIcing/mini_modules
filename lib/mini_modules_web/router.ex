@@ -25,6 +25,7 @@ defmodule MiniModulesWeb.Router do
     live "/sqlite", SQLiteLive, :index
     live "/live-editor", EditorLive, :index
 
+    live "/database", DatabaseLandingLive, :index
     live "/database/:database_id", DatabaseLive, :index
     live "/database/:database_id/:table_name", DatabaseLive, :index
   end
