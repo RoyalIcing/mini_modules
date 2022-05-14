@@ -314,8 +314,10 @@ defmodule MiniModules.DatabaseAgent do
   def handle_call({:run_query, query, bindings}, _from, %{db_conn: db_conn} = state) do
     with {:ok, statement} <- Exqlite.Sqlite3.prepare(db_conn, query),
          :ok <- Exqlite.Sqlite3.bind(db_conn, statement, bindings),
+         :ok <- Exqlite.Sqlite3.execute(db_conn, "PRAGMA query_only = true;"),
          {:ok, rows} <- Exqlite.Sqlite3.fetch_all(db_conn, statement),
          {:ok, columns} <- Exqlite.Sqlite3.columns(db_conn, statement),
+         :ok <- Exqlite.Sqlite3.execute(db_conn, "PRAGMA query_only = false;"),
          :ok <- Exqlite.Sqlite3.release(db_conn, statement) do
       {:reply, {:ok, {columns, rows}}, state}
     else
