@@ -1,3 +1,5 @@
+const plugin = require('tailwindcss/plugin');
+
 // See the Tailwind configuration guide for advanced usage
 // https://tailwindcss.com/docs/configuration
 module.exports = {
@@ -11,6 +13,9 @@ module.exports = {
   },
   plugins: [
     require('@tailwindcss/forms'),
-    require('@tailwindcss/typography')
+    require('@tailwindcss/typography'),
+    plugin(function ({ addVariant }) {
+      addVariant('current', '[aria-current="page"]&')
+    })
   ]
 }

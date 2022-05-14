@@ -7,6 +7,7 @@ defmodule MiniModulesWeb.DatabaseLive do
   # alias MiniModules.{UniversalModules, Fetch}
   # alias MiniModulesWeb.Input.CodeEditorComponent
 
+  alias MiniModulesWeb.Endpoint
   alias MiniModules.DatabaseAgent, as: Model
 
   defp fetch_data(socket) do
@@ -14,6 +15,7 @@ defmodule MiniModulesWeb.DatabaseLive do
     table_name = socket.assigns[:table_name]
 
     current = Model.get_current!(model_pid)
+    all_tables = Model.show_tables!(socket.assigns.model_pid)
 
     list_table =
       case table_name do
@@ -24,11 +26,31 @@ defmodule MiniModulesWeb.DatabaseLive do
           Model.list_table(model_pid, s)
       end
 
-    socket |> assign(%{current: current, list_table: list_table})
+    socket
+    |> assign(%{
+      current: current,
+      list_table: list_table,
+      all_tables: all_tables
+    })
   end
 
   @impl true
-  def mount(%{"database_id" => database_id} = params, _session, socket) do
+  def mount(_params, _session, socket) do
+    {:ok, socket}
+  end
+
+  defp path_to(database_id, table_name) do
+    case table_name do
+      nil ->
+        Routes.database_path(Endpoint, :index, database_id)
+
+      table_name ->
+        Routes.database_path(Endpoint, :index, database_id, table_name)
+    end
+  end
+
+  @impl true
+  def handle_params(%{"database_id" => database_id} = params, _uri, socket) do
     table_name = params["table_name"]
 
     model_pid =
@@ -51,8 +73,13 @@ defmodule MiniModulesWeb.DatabaseLive do
     #       Model.list_table(model_pid, s)
     #   end
 
+    current_path = path_to(database_id, table_name)
+    database_path = path_to(database_id, nil)
+
     socket =
       socket
+      |> assign(:current_path, current_path)
+      |> assign(:database_path, database_path)
       |> assign(:database_id, database_id)
       |> assign(:table_name, table_name)
       |> assign(:model_pid, model_pid)
@@ -63,56 +90,105 @@ defmodule MiniModulesWeb.DatabaseLive do
       |> assign(:changed_rows, nil)
 
     socket = fetch_data(socket)
-
-    {:ok, socket}
+    {:noreply, socket}
   end
+
+  def table_link(%{database_id: database_id, table_name: table_name, current_path: current_path, inner_block: inner_block}) do
+    # opts = assigns |> assigns_to_attributes() |> Keyword.put(:to, to)
+
+    path = path_to(database_id, table_name)
+    aria_current = if current_path == path, do: "page", else: "false"
+    class =
+      "block px-4 py-2 text-black bg-white hover:bg-blue-100 current:bg-blue-500 current:text-white"
+
+    opts = [to: path, class: class, aria_current: aria_current]
+    # assign(assigns, :opts, opts)
+    assigns = %{opts: opts, inner_block: inner_block}
+
+    ~H"""
+    <%= live_patch @opts do %><%= render_slot(@inner_block) %><% end %>
+    """
+  end
+
+  def table_link(%{database_id: _, inner_block: _} = assigns),
+    do: table_link(Map.put(assigns, :table_name, nil))
+
+  # do: table_link(%{assigns | table_name: nil})
 
   @impl true
   def render(assigns) do
     ~H"""
-    <form class="mt-4 pb-4 flex gap-2">
-      <button type="button" phx-click="increment" class="px-2 border">Increment</button>
-      <button type="button" phx-click="reload" class="px-2 border">Reload</button>
-      <button type="button" phx-click="show_tables" class="px-2 border">Show Tables</button>
-      <button type="button" phx-click="create_table_sqlar" class="px-2 border">Create SQL Archive Table</button>
+    <form class="mt-4 px-4 pb-4 flex gap-2">
+      <button type="button" phx-click="create_table_sqlar" class="px-2 bg-gray-100 border rounded shadow-sm">Create SQL Archive Table</button>
     </form>
-    <div>Hello world <%= inspect(@database_id) %> <%= inspect(@model_pid) %></div>
+    <div class="text-right opacity-50">Hello world <%= inspect(@database_id) %> <%= inspect(@model_pid) %></div>
 
     <form phx-submit="submit_query" class="mb-4">
       <textarea id="query-textbox" name="query" cols="60" rows="6" placeholder="Enter SQL…" phx-update="ignore" class="w-full border"></textarea>
-      <button type="submit" phx-disable-with="Querying..." class="px-2 border">Query</button>
+      <div class="flex px-4 gap-4">
+        <button type="submit" phx-disable-with="Querying..." class="px-2 text-black bg-blue-300 border border-blue-400 rounded">Query</button>
+        <details class="relative" hidden>
+          <summary class="block px-2 text-black bg-blue-300 border border-blue-400 rounded">Quickly Create</summary>
+          <details-menu role="menu" class="absolute top-full left-0 flex flex-col px-4 py-2 text-left whitespace-nowrap bg-white rounded shadow-lg">
+            <button type="button" role="menuitem">select datetime()</button>
+            <button type="button" role="menuitem">Bender</button>
+            <button type="button" role="menuitem">BB-8</button>
+          </details-menu>
+        </details>
+      </div>
     </form>
 
-    <output class="block p-4 bg-green-200"><%= @current %></output>
-    <output class="block p-4 bg-green-200"><%= @changed_rows %></output>
-    <output class="block p-4 bg-green-200"><%= inspect(@query_result) %></output>
+    <%= if @query_result do %>
+      <output class="block p-4 bg-green-200"><%= inspect(@query_result) %></output>
+    <% end %>
+    <%= if @changed_rows do %>
+      <output class="block p-4 bg-green-200"><%= @changed_rows %> rows changed</output>
+    <% end %>
     <%= if @error do %>
       <output class="block p-4 bg-red-200"><%= inspect(@error) %></output>
     <% end %>
 
-    <%= if @list_table do %>
-      <div class="prose lg:prose-lg mx-auto">
-        <h1><%= @table_name %></h1>
-        <table>
-          <thead>
-            <tr>
-              <%= for name <- get_cols(@list_table) do %>
-                <td><%= name %></td>
-              <% end %>
-            </tr>
-          </thead>
-          <tbody>
-            <%= for row <- get_rows(@list_table) do %>
+    <section aria-label="Tables" class="flex w-full divide-x">
+      <%= if @all_tables do %>
+        <nav aria-labelledby="all-tables-heading" class="w-full max-w-sm">
+          <h2 id="all-tables-heading" class="px-4 py-4 text-sm uppercase font-bold text-gray-500">All Tables</h2>
+          <ul>
+            <li>
+              <.table_link database_id={@database_id} current_path={@current_path}>[root]</.table_link>
+            </li>
+            <%= for [table_name, _] <- get_rows(@all_tables) do %>
+              <li>
+                <.table_link database_id={@database_id} table_name={table_name} current_path={@current_path}><%= table_name %></.table_link>
+              </li>
+            <% end %>
+          </ul>
+        </nav>
+      <% end %>
+
+      <%= if @list_table do %>
+        <div class="flex-1 pl-8 pt-4 prose lg:prose-lg">
+          <h1><%= @table_name %></h1>
+          <table>
+            <thead>
               <tr>
-                <%= for value <- row do %>
-                  <td><%= inspect(value) %></td>
+                <%= for name <- get_cols(@list_table) do %>
+                  <td><%= name %></td>
                 <% end %>
               </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% end %>
+            </thead>
+            <tbody>
+              <%= for row <- get_rows(@list_table) do %>
+                <tr>
+                  <%= for value <- row do %>
+                    <td><%= inspect(value) %></td>
+                  <% end %>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </section>
     """
   end
 
@@ -171,7 +247,7 @@ end
 defmodule MiniModules.DatabaseAgent do
   use GenServer
 
-  @select_all_tables "SELECT * FROM sqlite_master WHERE type = 'table'"
+  @select_all_tables "SELECT tbl_name, sql FROM sqlite_master WHERE type = 'table'"
   @create_table_sqlar """
   CREATE TABLE sqlar(name TEXT PRIMARY KEY, mode INT, mtime INT, sz INT, data BLOB)
   """
