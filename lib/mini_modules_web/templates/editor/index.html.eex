@@ -98,11 +98,17 @@ export function Example() {
     ReactDOM.unmountComponentAtNode(clientAppEl);
   }, { once: true });
 
-  try {
-    return ReactDOMServer.renderToString(wrapped);
-  } catch (error) {
-    return \`<!-- Uncaught error: \${error.message} -->\n<div class="flex h-full justify-center items-center text-white bg-red-700"><div>Error: \${error.message}</div></div>\`;
-  }
+  return async () => {
+    try {
+      const stream = await ReactDOMServer.renderToReadableStream(<App />);
+      await stream.allReady;
+      //return stream.getReader().read()
+      return await new Response(stream, { headers: {'Content-Type': 'text/html'} }).text();
+      //return ReactDOMServer.renderToString(wrapped);
+    } catch (error) {
+      return \`<!-- Uncaught error: \${error.message} -->\n<div class="flex h-full justify-center items-center text-white bg-red-700"><div>Error: \${error.message}</div></div>\`;
+    }
+  };
 }
 `;
 
@@ -305,9 +311,9 @@ require(["vs/editor/editor.main"], function () {
         const hookNames = Object.keys(window.React).filter(name => name.startsWith('use'));
         const preamble = hookNames.map(hookName => `const ${hookName} = window.React.${hookName}`).join(';');
         const executor = new Function(`${preamble}; ${code}; return exports.Example();`);
-        const result = executor();
+        const renderServer = executor();
         return new Map()
-          .set('result', result)
+          .set('renderServer', renderServer)
           .set('error', '')
           .set('esbuildMs', duration.toString() + 'ms to compile')
           .set('esbuildBytes', (codeBytes / 1024).toFixed(2) + ' KB asset');
@@ -319,7 +325,14 @@ require(["vs/editor/editor.main"], function () {
         for (const slotEl of resultEl.querySelectorAll('slot[name]')) {
           slotEl.textContent = data.get(slotEl.name) || '';
         }
-        htmlOutput.getModel().setValue(data.get('result') || '');
+
+        // htmlOutput.getModel().setValue(data.get('renderServer') || '');
+        return data.get('renderServer')();
+      })
+      .then(async a => await a)
+      .then(html => {
+        console.log("HTML!", html)
+        htmlOutput.getModel().setValue(html || '');
       });
 
     /*fetch('/upload', { method: 'POST', body })
