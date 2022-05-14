@@ -94,7 +94,7 @@ defmodule MiniModulesWeb.DatabaseLive do
     aria_current = if current_path == path, do: "page", else: "false"
 
     class =
-      "block px-4 py-2 text-black bg-white hover:bg-blue-100 current:bg-blue-500 current:text-white"
+      "block px-4 py-2 text-black bg-white border-l-8 border-white hover:text-blue-800 hover:bg-blue-100 hover:border-blue-300 current:text-blue-800 current:bg-blue-100 current:border-blue-700"
 
     opts = [to: path, class: class, aria_current: aria_current]
     # assign(assigns, :opts, opts)
@@ -116,12 +116,16 @@ defmodule MiniModulesWeb.DatabaseLive do
     <form class="mt-4 px-4 pb-4 flex gap-2">
       <button type="button" phx-click="create_table_sqlar" class="px-2 bg-gray-100 border rounded shadow-sm">Create SQL Archive Table</button>
     </form>
-    <div class="text-right opacity-50">Hello world <%= inspect(@database_id) %> <%= inspect(@model_pid) %></div>
+    <div class="text-right opacity-50">debug <%= inspect(@database_id) %> <%= inspect(@model_pid) %></div>
 
-    <form phx-submit="submit_query" class="mb-4">
-      <textarea id="query-textbox" name="query" cols="60" rows="6" placeholder="Enter SQL…" phx-update="ignore" class="w-full border"></textarea>
-      <div class="flex px-4 gap-4">
-        <button type="submit" phx-disable-with="Querying..." class="px-2 text-black bg-blue-300 border border-blue-400 rounded">Query</button>
+    <form id="sql-form" phx-submit="submit_query" class="mb-4">
+      <textarea id="query-textbox" name="query" cols="60" rows="6" placeholder="Enter SQL…" phx-update="ignore" class="w-full font-mono text-lg text-blue-800 border"></textarea>
+      <div class="flex px-4 gap-4 items-center">
+        <button type="submit" phx-disable-with="Querying..." class="px-2 text-lg text-white bg-blue-600 border border-blue-700 rounded" name="query" value="query">Query</button>
+        <fieldset class="flex gap-4">
+          <label><input type="radio" name="type" value="query" checked> Single Query</label>
+          <label><input type="radio" name="type" value="statements"> Multiple Statements</label>
+        </fieldset>
         <details class="relative" hidden>
           <summary class="block px-2 text-black bg-blue-300 border border-blue-400 rounded">Quickly Create</summary>
           <details-menu role="menu" class="absolute top-full left-0 flex flex-col px-4 py-2 text-left whitespace-nowrap bg-white rounded shadow-lg">
@@ -247,14 +251,32 @@ defmodule MiniModulesWeb.DatabaseLive do
         {:ok, changes} ->
           socket |> assign(:changed_rows, changes)
 
-        {:error, reason} ->
-          socket |> assign(:error, reason)
+        {:error, reason} = result ->
+          socket |> assign(:query_result, result)
       end
 
     {:noreply, socket}
   end
 
-  def handle_event("submit_query", %{"query" => query}, socket) do
+  def handle_event("submit_query", %{"type" => "statements", "query" => query} = payload, socket) do
+    IO.inspect(payload)
+
+    socket =
+      case Model.execute_statements(socket.assigns.model_pid, query) do
+        {:error, _reason} = result ->
+          socket |> assign(:query_result, result)
+
+        {:ok, changed_rows} ->
+          socket |> assign(:changed_rows, changed_rows)
+      end
+
+    socket = refresh_data(socket)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("submit_query", %{"query" => query} = payload, socket) do
+    IO.inspect(payload)
     result = Model.run_query(socket.assigns.model_pid, query)
     socket = socket |> assign(%{query_result: result})
     socket = refresh_data(socket)
@@ -296,11 +318,24 @@ defmodule MiniModules.DatabaseAgent do
     with {:ok, statement} <- Exqlite.Sqlite3.prepare(db_conn, query),
          :ok <- Exqlite.Sqlite3.bind(db_conn, statement, bindings),
          {:ok, rows} <- Exqlite.Sqlite3.fetch_all(db_conn, statement),
-         {:ok, columns} <- Exqlite.Sqlite3.columns(db_conn, statement) do
+         {:ok, columns} <- Exqlite.Sqlite3.columns(db_conn, statement),
+         :ok <- Exqlite.Sqlite3.release(db_conn, statement) do
       {:reply, {:ok, {columns, rows}}, state}
     else
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:execute, sql}, _from, %{db_conn: db_conn} = state) do
+    case Exqlite.Sqlite3.execute(db_conn, sql) do
+      :ok ->
+        changes = Exqlite.Sqlite3.changes(db_conn)
+        {:reply, {:ok, changes}, state}
+
+      {:error, _reason} = result ->
+        {:reply, result, state}
     end
   end
 
@@ -315,16 +350,8 @@ defmodule MiniModules.DatabaseAgent do
   end
 
   @impl true
-  def handle_call(:create_table_sqlar, _from, %{db_conn: db_conn} = state) do
-    case Exqlite.Sqlite3.execute(db_conn, @create_table_sqlar) do
-      :ok ->
-        changes = Exqlite.Sqlite3.changes(db_conn)
-        {:reply, {:ok, changes}, state}
-
-      {:error, _reason} = result ->
-        {:reply, result, state}
-    end
-  end
+  def handle_call(:create_table_sqlar, from, state),
+    do: handle_call({:execute, @create_table_sqlar}, from, state)
 
   @impl true
   def handle_cast(:increment, %{n: n} = state) do
@@ -357,6 +384,10 @@ defmodule MiniModules.DatabaseAgent do
 
   def run_query(pid, query) do
     GenServer.call(pid, {:run_query, query})
+  end
+
+  def execute_statements(pid, sql) do
+    GenServer.call(pid, {:execute, sql})
   end
 
   def create_table_sqlar!(pid) do
