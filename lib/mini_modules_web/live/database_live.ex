@@ -94,7 +94,7 @@ defmodule MiniModulesWeb.DatabaseLive do
     aria_current = if current_path == path, do: "page", else: "false"
 
     class =
-      "block px-4 py-2 text-black bg-white border-l-8 border-white hover:text-blue-800 hover:bg-blue-100 hover:border-blue-300 current:text-blue-800 current:bg-blue-100 current:border-blue-700"
+      "block px-4 py-2 text-black border-l-8 border-white hover:text-blue-800 hover:bg-blue-100 hover:border-blue-300 current:text-blue-800 current:bg-blue-100 current:border-blue-700"
 
     opts = [to: path, class: class, aria_current: aria_current]
     # assign(assigns, :opts, opts)
@@ -108,8 +108,6 @@ defmodule MiniModulesWeb.DatabaseLive do
   def table_link(%{database_id: _, inner_block: _} = assigns),
     do: table_link(Map.put(assigns, :table_name, nil))
 
-  # do: table_link(%{assigns | table_name: nil})
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -118,10 +116,10 @@ defmodule MiniModulesWeb.DatabaseLive do
     <form id="sql-form" phx-submit="submit_query" class="mb-4">
       <textarea id="query-textbox" name="query" cols="60" rows="6" placeholder="Enter SQL…" phx-update="ignore" class="w-full font-mono text-lg text-blue-800 border"></textarea>
       <div class="flex px-4 gap-4 items-center">
-        <button type="submit" phx-disable-with="Querying..." class="px-2 text-lg text-white bg-blue-600 border border-blue-700 rounded" name="query" value="query">Query</button>
+        <button type="submit" phx-disable-with="Running..." class="px-2 text-lg text-white bg-blue-600 border border-blue-700 rounded" name="query" value="query">Run</button>
         <fieldset class="flex gap-4">
-          <label><input type="radio" name="type" value="query" checked> Single Query</label>
-          <label><input type="radio" name="type" value="statements"> Multiple Statements</label>
+          <label><input type="radio" name="type" value="query" checked> Read-only Query</label>
+          <label><input type="radio" name="type" value="statements"> Execute Multiple Statements</label>
         </fieldset>
         <details class="relative" hidden>
           <summary class="block px-2 text-black bg-blue-300 border border-blue-400 rounded">Quickly Create</summary>
@@ -146,7 +144,7 @@ defmodule MiniModulesWeb.DatabaseLive do
         </details>
       </section>
     <% end %>
-    <%= if @changed_rows do %>
+    <%= if @changed_rows && false do %>
       <output class="block p-4 bg-green-200"><%= @changed_rows %> rows changed</output>
     <% end %>
     <%= if error?(@query_result) do %>
@@ -156,38 +154,39 @@ defmodule MiniModulesWeb.DatabaseLive do
       </output>
     <% end %>
 
-    <section aria-label="Tables" class="flex w-full divide-x">
+    <section aria-label="Tables" class="flex w-full divide-x border-t">
       <%= if @all_tables do %>
-        <nav aria-labelledby="all-tables-heading" class="w-full max-w-sm">
-          <h2 id="all-tables-heading" class="px-4 py-4 text-sm uppercase font-bold text-gray-500">All Tables</h2>
+        <nav aria-labelledby="all-tables-heading" class="w-full min-h-screen max-w-sm pt-4 bg-gray-50">
           <ul>
             <li>
-              <.table_link database_id={@database_id} current_path={@current_path}>[root]</.table_link>
+              <.table_link database_id={@database_id} current_path={@current_path}>Database <%= @database_id %></.table_link>
             </li>
+          </ul>
+          <h2 id="all-tables-heading" class="pl-6 pr-4 py-4 text-sm uppercase font-bold text-gray-500">Tables</h2>
+          <ul>
             <%= for [table_name, _] <- get_rows(@all_tables) do %>
               <li>
                 <.table_link database_id={@database_id} table_name={table_name} current_path={@current_path}><%= table_name %></.table_link>
               </li>
             <% end %>
           </ul>
-          <form class="pt-8 px-4 pb-4 flex gap-2">
-            <button type="button" phx-click="create_table_sqlar" class="px-2 bg-gray-100 border rounded shadow-sm">Create SQL Archive Table</button>
+          <form class="pt-16 px-4 pb-4 flex gap-2">
+            <button type="button" phx-click="create_table_sqlar" class="px-2 bg-white border border-gray-400 rounded shadow-sm">Create SQL Archive Table</button>
           </form>
         </nav>
       <% end %>
 
       <%= if @table_name == nil do %>
         <div class="flex-1 pl-8 pt-4 prose lg:prose-lg">
-          <dl>
-            <dt class="font-bold">Database ID</dt>
-            <dd><%= @database_id %></dd>
-          </dl>
+          <h1>Database <%= @database_id %></h1>
+          <p class="italic">Choose a table from the sidebar.</p>
         </div>
       <% end %>
 
       <%= if @list_table do %>
         <div class="flex-1 pl-8 pt-4 prose lg:prose-lg">
           <h1><%= @table_name %></h1>
+          <p><%= get_count(@list_table) %> rows</p>
           <.query_result_table cols={get_cols(@list_table)} rows={get_rows(@list_table)} />
         </div>
       <% end %>
@@ -222,8 +221,12 @@ defmodule MiniModulesWeb.DatabaseLive do
   defp ok?(_), do: false
   defp error?({:error, _}), do: true
   defp error?(_), do: false
+  defp get_count({:ok, %{count: count}}), do: count
+  defp get_count(_), do: nil
+  defp get_cols({:ok, %{values: values}}), do: get_cols({:ok, values})
   defp get_cols({:ok, {cols, _rows}}), do: cols
   defp get_cols(_), do: []
+  defp get_rows({:ok, %{values: values}}), do: get_rows({:ok, values})
   defp get_rows({:ok, {_cols, rows}}), do: rows
   defp get_rows(_), do: []
 
@@ -265,12 +268,14 @@ defmodule MiniModulesWeb.DatabaseLive do
   def handle_event("create_table_sqlar", _, socket) do
     socket =
       case Model.create_table_sqlar!(socket.assigns.model_pid) do
-        {:ok, changes} ->
-          socket |> assign(:changed_rows, changes)
+        {:ok, changed_rows} ->
+          socket |> assign(:changed_rows, changed_rows)
 
         {:error, _reason} = result ->
           socket |> assign(:query_result, result)
       end
+
+    socket = refresh_data(socket)
 
     {:noreply, socket}
   end
@@ -300,6 +305,21 @@ defmodule MiniModules.DatabaseAgent do
     {:ok, %{n: n, db_conn: db_conn}}
   end
 
+  defp internal_run_query(db_conn, query, bindings) do
+    with {:ok, statement} <- Exqlite.Sqlite3.prepare(db_conn, query),
+         :ok <- Exqlite.Sqlite3.bind(db_conn, statement, bindings),
+         :ok <- Exqlite.Sqlite3.execute(db_conn, "PRAGMA query_only = true;"),
+         {:ok, rows} <- Exqlite.Sqlite3.fetch_all(db_conn, statement),
+         {:ok, columns} <- Exqlite.Sqlite3.columns(db_conn, statement),
+         :ok <- Exqlite.Sqlite3.execute(db_conn, "PRAGMA query_only = false;"),
+         :ok <- Exqlite.Sqlite3.release(db_conn, statement) do
+      {:ok, {columns, rows}}
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   @impl true
   def handle_call(:current, _from, %{n: n} = state) do
     {:reply, n, state}
@@ -312,18 +332,8 @@ defmodule MiniModules.DatabaseAgent do
 
   @impl true
   def handle_call({:run_query, query, bindings}, _from, %{db_conn: db_conn} = state) do
-    with {:ok, statement} <- Exqlite.Sqlite3.prepare(db_conn, query),
-         :ok <- Exqlite.Sqlite3.bind(db_conn, statement, bindings),
-         :ok <- Exqlite.Sqlite3.execute(db_conn, "PRAGMA query_only = true;"),
-         {:ok, rows} <- Exqlite.Sqlite3.fetch_all(db_conn, statement),
-         {:ok, columns} <- Exqlite.Sqlite3.columns(db_conn, statement),
-         :ok <- Exqlite.Sqlite3.execute(db_conn, "PRAGMA query_only = false;"),
-         :ok <- Exqlite.Sqlite3.release(db_conn, statement) do
-      {:reply, {:ok, {columns, rows}}, state}
-    else
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    result = internal_run_query(db_conn, query, bindings)
+    {:reply, result, state}
   end
 
   @impl true
@@ -344,8 +354,12 @@ defmodule MiniModules.DatabaseAgent do
   end
 
   @impl true
-  def handle_call({:list_table, table_name}, from, state) do
-    handle_call({:run_query, ~s{select * from "#{table_name}"}}, from, state)
+  def handle_call({:list_table, table_name}, _from, %{db_conn: db_conn} = state) do
+    with {:ok, {_, [[count]]}} <-
+           internal_run_query(db_conn, ~s{select count(*) from "#{table_name}"}, []),
+         {:ok, values} <- internal_run_query(db_conn, ~s{select * from "#{table_name}"}, []) do
+      {:reply, {:ok, %{count: count, values: values}}, state}
+    end
   end
 
   @impl true
