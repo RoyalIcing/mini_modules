@@ -10,7 +10,7 @@ defmodule MiniModulesWeb.DatabaseLive do
   alias MiniModulesWeb.Endpoint
   alias MiniModules.DatabaseAgent, as: Model
 
-  defp fetch_data(socket) do
+  defp refresh_data(socket) do
     model_pid = socket.assigns[:model_pid]
     table_name = socket.assigns[:table_name]
 
@@ -36,6 +36,11 @@ defmodule MiniModulesWeb.DatabaseLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    socket =
+      socket
+      |> assign(:query_result, nil)
+      |> assign(:changed_rows, nil)
+
     {:ok, socket}
   end
 
@@ -62,17 +67,6 @@ defmodule MiniModulesWeb.DatabaseLive do
           pid
       end
 
-    # current = Model.get_current!(model_pid)
-
-    # list_table =
-    #   case table_name do
-    #     nil ->
-    #       nil
-
-    #     s ->
-    #       Model.list_table(model_pid, s)
-    #   end
-
     current_path = path_to(database_id, table_name)
     database_path = path_to(database_id, nil)
 
@@ -83,21 +77,22 @@ defmodule MiniModulesWeb.DatabaseLive do
       |> assign(:database_id, database_id)
       |> assign(:table_name, table_name)
       |> assign(:model_pid, model_pid)
-      # |> assign(:current, current)
-      |> assign(:error, nil)
-      |> assign(:query_result, nil)
-      # |> assign(:list_table, list_table)
-      |> assign(:changed_rows, nil)
 
-    socket = fetch_data(socket)
+    socket = refresh_data(socket)
     {:noreply, socket}
   end
 
-  def table_link(%{database_id: database_id, table_name: table_name, current_path: current_path, inner_block: inner_block}) do
+  def table_link(%{
+        database_id: database_id,
+        table_name: table_name,
+        current_path: current_path,
+        inner_block: inner_block
+      }) do
     # opts = assigns |> assigns_to_attributes() |> Keyword.put(:to, to)
 
     path = path_to(database_id, table_name)
     aria_current = if current_path == path, do: "page", else: "false"
+
     class =
       "block px-4 py-2 text-black bg-white hover:bg-blue-100 current:bg-blue-500 current:text-white"
 
@@ -138,14 +133,26 @@ defmodule MiniModulesWeb.DatabaseLive do
       </div>
     </form>
 
-    <%= if @query_result do %>
-      <output class="block p-4 bg-green-200"><%= inspect(@query_result) %></output>
+    <%= if ok?(@query_result) do %>
+      <section aria-labelledby="result-success-heading" class="flex-1 pl-8 pt-4 bg-green-100">
+        <details open>
+          <summary class="block cursor-pointer">
+            <h2 id="result-success-heading" class="pb-4 text-sm uppercase font-bold text-green-600">Results</h2>
+          </summary>
+          <div class="prose lg:prose-lg">
+            <.query_result_table cols={get_cols(@query_result)} rows={get_rows(@query_result)} />
+          </div>
+        </details>
+      </section>
     <% end %>
     <%= if @changed_rows do %>
       <output class="block p-4 bg-green-200"><%= @changed_rows %> rows changed</output>
     <% end %>
-    <%= if @error do %>
-      <output class="block p-4 bg-red-200"><%= inspect(@error) %></output>
+    <%= if error?(@query_result) do %>
+      <output class="block p-4 bg-red-200">
+        <h2 id="result-error-heading" class="pb-4 text-sm uppercase font-bold text-red-700">Error</h2>
+        <%= inspect(@query_result) %>
+      </output>
     <% end %>
 
     <section aria-label="Tables" class="flex w-full divide-x">
@@ -168,30 +175,40 @@ defmodule MiniModulesWeb.DatabaseLive do
       <%= if @list_table do %>
         <div class="flex-1 pl-8 pt-4 prose lg:prose-lg">
           <h1><%= @table_name %></h1>
-          <table>
-            <thead>
-              <tr>
-                <%= for name <- get_cols(@list_table) do %>
-                  <td><%= name %></td>
-                <% end %>
-              </tr>
-            </thead>
-            <tbody>
-              <%= for row <- get_rows(@list_table) do %>
-                <tr>
-                  <%= for value <- row do %>
-                    <td><%= inspect(value) %></td>
-                  <% end %>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <.query_result_table cols={get_cols(@list_table)} rows={get_rows(@list_table)} />
         </div>
       <% end %>
     </section>
     """
   end
 
+  defp query_result_table(assigns) do
+    ~H"""
+    <table>
+      <thead>
+        <tr>
+          <%= for name <- @cols do %>
+            <td><%= name %></td>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <%= for row <- @rows do %>
+          <tr>
+            <%= for value <- row do %>
+              <td><%= inspect(value) %></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    """
+  end
+
+  defp ok?({:ok, _}), do: true
+  defp ok?(_), do: false
+  defp error?({:error, _}), do: true
+  defp error?(_), do: false
   defp get_cols({:ok, {cols, _rows}}), do: cols
   defp get_cols(_), do: []
   defp get_rows({:ok, {_cols, rows}}), do: rows
@@ -229,16 +246,9 @@ defmodule MiniModulesWeb.DatabaseLive do
   end
 
   def handle_event("submit_query", %{"query" => query}, socket) do
-    socket =
-      case Model.run_query(socket.assigns.model_pid, query) do
-        {:ok, result} ->
-          socket |> assign(%{query_result: result, error: nil})
-
-        {:error, reason} ->
-          socket |> assign(:error, reason)
-      end
-
-    socket = fetch_data(socket)
+    result = Model.run_query(socket.assigns.model_pid, query)
+    socket = socket |> assign(%{query_result: result})
+    socket = refresh_data(socket)
 
     {:noreply, socket}
   end
