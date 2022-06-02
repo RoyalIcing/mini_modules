@@ -47,6 +47,21 @@ defmodule MiniModulesWeb.YieldMachineLive do
                                   export { TrafficLights };
                                   """, "timer\ntimer\ntimer"}
 
+  @example_dialog {~S"""
+                   export function ConfirmationDialog() {
+                     function* Closed() {
+                       yield on("open", Open);
+                     }
+                     function* Open() {
+                       yield on("cancel", Closed);
+                       yield on("confirm", Confirmed);
+                     }
+                     function* Confirmed() {}
+
+                     return Closed;
+                   }
+                   """, "open\nconfirm"}
+
   @example_aborter {~S"""
                     export function* Aborter() {
                       function* Initial() {
@@ -63,6 +78,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
                       function* Pending() {
                         yield on("resolve", Resolved);
                         yield on("reject", Rejected);
+                        yield on("errorThrown", Rejected);
                       }
                       function* Resolved() {}
                       function* Rejected() {}
@@ -71,16 +87,26 @@ defmodule MiniModulesWeb.YieldMachineLive do
                     }
                     """, "5000\nresolve"}
 
+  defp nav_button_class, do: "px-4 py-2 text-left text-sm hover:text-indigo-700 hover:bg-indigo-50"
+
   @impl true
   def render(assigns) do
     ~H"""
     <.form
       for={:editor}
       id="editor-form"
-      class="flex gap-4"
+      class="flex"
       phx-change="changed"
       phx-submit="submit"
     >
+      <nav class="flex flex-col text-left py-2 bg-indigo-100 min-w-[7rem] w-[20vw] max-w-[12rem]">
+        <button type="button" phx-click="example_traffic_lights" class={nav_button_class()}>Traffic Lights</button>
+        <button type="button" phx-click="example_traffic_lights_timed" class={nav_button_class()}>Traffic Lights Timed</button>
+        <button type="button" phx-click="example_dialog" class={nav_button_class()}>Confirmation Dialog</button>
+        <button type="button" phx-click="example_aborter" class={nav_button_class()}>Aborter</button>
+        <button type="button" phx-click="example_import_traffic_lights" class={nav_button_class()}>Import Traffic Lights</button>
+        <button type="button" phx-click="example_promise" class={nav_button_class()}>Promise</button>
+      </nav>
       <div class="w-full">
         <CodeEditorComponent.monaco
           id="monaco-editor"
@@ -90,13 +116,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
           phx-keyup="source_enter_key"
           phx-key="Enter"
         />
-        <div class="px-4 py-2 space-x-8">
-        <button type="button" phx-click="example_traffic_lights">Traffic Lights</button>
-        <button type="button" phx-click="example_traffic_lights_timed">Traffic Lights Timed</button>
-        <button type="button" phx-click="example_import_traffic_lights">Import Traffic Lights</button>
-        <button type="button" phx-click="example_aborter">Aborter</button>
-        <button type="button" phx-click="example_promise">Promise</button>
-        </div>
       </div>
       <!--<textarea
         name="source"
@@ -109,19 +128,25 @@ defmodule MiniModulesWeb.YieldMachineLive do
       <section class="block w-1/2 space-y-4">
         <textarea name="event_lines" rows={10} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @event_lines %></textarea>
         <%= if @mode == :idle do %>
-          <button type="button" phx-click="start_timer">Start Timer</button>
+          <button type="button" phx-click="start_timer" class="px-4 py-2 text-white bg-green-800">Start Timer</button>
         <% else %>
-          <button type="button" phx-click="stop_timer">Stop Timer</button>
+          <button type="button" phx-click="stop_timer" class="px-4 py-2 text-white bg-red-800">Stop Timer</button>
         <% end %>
         <%= if @error_message do %>
-          <div role="alert" class="text-red-300">
+          <div role="alert" class="p-2 bg-red-100 text-red-700 border border-red-200">
             <%= @error_message %>
           </div>
         <% end %>
         <%= if @state do %>
-          <output class="block text-center">Currently <strong><%= @state %></strong> after <strong><%= @clock / 1000 %></strong>s</output>
-          <mermaid-image source={render_mermaid(@state, @components)} class="block bg-white text-center">
-          </mermaid-image>
+          <output class="block text-center">
+            Currently <strong><%= @state %></strong>
+            <%= if @clock > 0 do %>
+              after <strong><%= @clock / 1000 %></strong>s
+            <% end %>
+          </output>
+          <div class="pr-2">
+            <mermaid-image source={render_mermaid(@state, @components)} class="block bg-white text-center"></mermaid-image>
+          </div>
         <% end %>
       </section>
     </.form>
@@ -325,6 +350,9 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   defp use_example("import_traffic_lights", socket = %Socket{}),
     do: reset_content(@example_import_traffic_lights, socket)
+
+  defp use_example("dialog", socket = %Socket{}),
+    do: reset_content(@example_dialog, socket)
 
   defp use_example("aborter", socket = %Socket{}),
     do: reset_content(@example_aborter, socket)
