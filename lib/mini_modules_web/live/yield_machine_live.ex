@@ -95,9 +95,9 @@ defmodule MiniModulesWeb.YieldMachineLive do
     <.form
       for={:editor}
       id="editor-form"
+      phx-hook="PushEventOnFormData"
+      phx-value-event="changed"
       class="flex"
-      phx-change="changed"
-      phx-submit="submit"
     >
       <nav class="flex flex-col text-left py-2 bg-indigo-100 min-w-[7rem] w-[20vw] max-w-[12rem]">
         <button type="button" phx-click="example_traffic_lights" class={nav_button_class()}>Traffic Lights</button>
@@ -113,8 +113,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
           change_clock={@change_clock}
           input={@source}
           name="source"
-          phx-keyup="source_enter_key"
-          phx-key="Enter"
         />
       </div>
       <!--<textarea
@@ -163,7 +161,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
   end
 
   defp format_event(event) when is_binary(event), do: event
-  defp format_event(event) when is_number(event), do: event / 1000
+  defp format_event(event) when is_number(event), do: format_float(event / 1000)
 
   defp parse_event_lines(event_lines) do
     event_lines

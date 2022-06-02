@@ -70,6 +70,18 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
         // this.attachShadow({ mode: 'open' });
     }
 
+    connectedCallback() {
+        this.aborter = new AbortController();
+    }
+
+    disconnectedCallback() {
+        this.aborter.abort();
+    }
+
+    get signal() {
+        return this.aborter.signal;
+    }
+
     static get observedAttributes() { return ['source', 'change-clock']; }
 
     attributeChangedCallback(name, oldValue, newValue) {
@@ -127,6 +139,16 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
                 formatOnType: true,
                 formatOnPaste: true,
             });
+
+            const form = this.closest("form");
+            if (form) {
+                form.addEventListener("formdata", event => {
+                    const name = this.getAttribute('name');
+                    const value = this.editor.getModel().getValue();
+                    event.formData.append(name, value);
+                }, { signal: this.signal });
+            }
+
             this.editor.onDidChangeModelContent(() => {
                 const value = this.editor.getValue();
                 console.log("monaco did change", value);
@@ -134,6 +156,7 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
                 if (this.hasAttribute('name')) {
                     const form = this.closest("form");
                     if (form) {
+                        // Trigger formdata event
                         new FormData(form);
                     }
                 }

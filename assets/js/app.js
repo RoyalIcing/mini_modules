@@ -24,11 +24,13 @@ import topbar from "../vendor/topbar";
 import "./mermaid";
 import { MonacoHook } from "./monaco";
 import { WebComponentHook } from "./hooks/WebComponent";
+import { PushEventOnFormDataHook } from "./hooks/PushEventOnFormData";
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const hooks = {
     Monaco: MonacoHook,
     WebComponent: WebComponentHook,
+    PushEventOnFormData: PushEventOnFormDataHook,
 };
 const liveSocket = new LiveSocket("/live", Socket, { params: { _csrf_token: csrfToken }, hooks });
 
