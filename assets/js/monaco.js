@@ -68,6 +68,8 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
         super();
         console.log("MiniModulesMonacoEditorElement constructor");
         // this.attachShadow({ mode: 'open' });
+
+        this.isApplyingAttributeChange = false;
     }
 
     connectedCallback() {
@@ -91,7 +93,9 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
             const source = this.getAttribute('source');
             const model = this.editor.getModel();
             if (model.getValue() !== source) {
+                this.isApplyingAttributeChange = true;
                 model.setValue(source);
+                this.isApplyingAttributeChange = false;
             }
         }
         if (name === 'source') {
@@ -155,7 +159,7 @@ customElements.define('minimodules-monaco-editor', class MiniModulesMonacoEditor
 
                 if (this.hasAttribute('name')) {
                     const form = this.closest("form");
-                    if (form) {
+                    if (form && !this.isApplyingAttributeChange) {
                         // Trigger formdata event
                         new FormData(form);
                     }
