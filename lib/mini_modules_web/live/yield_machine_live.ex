@@ -127,7 +127,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
       <section class="relative block w-1/2 space-y-4">
         <input type="hidden" name="change_clock" value={@change_clock}>
-        <ul class="absolute -ml-4 pt-2 font-mono" role="presentation">
+        <ul class="absolute r-full mr-2 pt-2 text-right font-mono" role="presentation" style="right: 100%">
           <%= for index <- Enum.with_index(@parsed_events, fn _, i -> i end) do %>
             <li class="text-gray-600"><%= index + 1 %></li>
           <% end %>
@@ -226,7 +226,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
       end
 
     events = parse_event_lines(event_lines)
-    IO.inspect(events)
 
     {state, clock, components, error_message} =
       case decoded do
@@ -345,8 +344,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
         _ ->
           event_lines ++ [last_event, format_float(@timer_interval)]
       end
-
-    IO.inspect(event_lines)
 
     event_lines = Enum.join(event_lines, "\n")
     socket = socket |> assign(event_lines: event_lines)
