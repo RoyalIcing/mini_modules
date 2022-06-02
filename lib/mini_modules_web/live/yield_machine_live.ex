@@ -98,6 +98,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       id="editor-form"
       phx-hook="PushEventOnFormData"
       phx-value-event="changed"
+      phx-change="changed"
       class="flex"
     >
       <nav class="flex flex-col text-left py-2 bg-indigo-100 min-w-[7rem] w-[20vw] max-w-[12rem]">
