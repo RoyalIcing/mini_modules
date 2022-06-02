@@ -178,13 +178,13 @@ defmodule MiniModulesWeb.YieldParserLive do
 
     IO.inspect(decoded)
 
-    change_clock = assigns.change_clock
-    input =
-      case mode do
-        :load -> input
-        {:change, ^change_clock} -> input
-        {:change, _} -> assigns.input
-      end
+    # change_clock = assigns.change_clock
+    # input =
+    #   case mode do
+    #     :load -> input
+    #     {:change, ^change_clock} -> input
+    #     {:change, _} -> assigns.input
+    #   end
 
     # decoded = UniversalModules.Parser.decode(input)
     # identifiers = UniversalModules.Inspector.list_identifiers(elem(decoded, 1))

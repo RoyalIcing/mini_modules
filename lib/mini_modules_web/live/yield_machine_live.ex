@@ -219,15 +219,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
           {decoded, imported_modules}
       end
 
-    change_clock = assigns.change_clock
-
-    event_lines =
-      case mode do
-        :load -> event_lines
-        {:change, ^change_clock} -> event_lines
-        {:change, _} -> assigns.event_lines
-      end
-
     events = parse_event_lines(event_lines)
 
     {state, clock, components, error_message} =
