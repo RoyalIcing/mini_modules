@@ -87,7 +87,8 @@ defmodule MiniModulesWeb.YieldMachineLive do
                     }
                     """, "5000\nresolve"}
 
-  defp nav_button_class, do: "px-4 py-2 text-left text-sm hover:text-indigo-700 hover:bg-indigo-50"
+  defp nav_button_class,
+    do: "px-4 py-2 text-left text-sm hover:text-indigo-700 hover:bg-indigo-50"
 
   @impl true
   def render(assigns) do
@@ -124,6 +125,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       ><%= @source %></textarea>-->
 
       <section class="block w-1/2 space-y-4">
+        <input type="hidden" name="change_clock" value={@change_clock}>
         <textarea name="event_lines" rows={10} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @event_lines %></textarea>
         <%= if @mode == :idle do %>
           <button type="button" phx-click="start_timer" class="px-4 py-2 text-white bg-green-800">Start Timer</button>
@@ -177,7 +179,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
     end)
   end
 
-  defp process(assigns, source, event_lines, load \\ nil) do
+  defp process(assigns, source, event_lines, mode) do
     decoded =
       try do
         UniversalModules.Parser.decode(source)
@@ -186,6 +188,8 @@ defmodule MiniModulesWeb.YieldMachineLive do
       catch
         _ -> {:error, :catch}
       end
+
+    load = if mode == :load, do: :load, else: nil
 
     {decoded, imported_modules} =
       case decoded do
@@ -213,6 +217,15 @@ defmodule MiniModulesWeb.YieldMachineLive do
         _ ->
           imported_modules = assigns[:imported_modules] || %{}
           {decoded, imported_modules}
+      end
+
+    change_clock = assigns.change_clock
+
+    event_lines =
+      case mode do
+        :load -> event_lines
+        {:change, ^change_clock} -> event_lines
+        {:change, _} -> assigns.event_lines
       end
 
     events = parse_event_lines(event_lines)
@@ -248,9 +261,10 @@ defmodule MiniModulesWeb.YieldMachineLive do
   def mount(_parmas, _session, socket) do
     {source, event_lines} = @example_traffic_lights
 
+    socket = socket |> assign(:change_clock, 0)
+
     socket =
       socket
-      |> assign(:change_clock, 0)
       |> assign(
         process(
           socket.assigns,
@@ -264,9 +278,16 @@ defmodule MiniModulesWeb.YieldMachineLive do
   end
 
   @impl true
-  def handle_event("changed", %{"source" => source, "event_lines" => event_lines}, socket) do
-    IO.puts("changed")
-    {:noreply, assign(socket, process(socket.assigns, source, event_lines))}
+  def handle_event(
+        "changed",
+        %{"source" => source, "event_lines" => event_lines, "change_clock" => change_clock_s},
+        socket
+      ) do
+    IO.puts("changed #{change_clock_s}")
+    {change_clock, _} = Integer.parse(change_clock_s)
+
+    {:noreply,
+     assign(socket, process(socket.assigns, source, event_lines, {:change, change_clock}))}
   end
 
   def handle_event("source_enter_key", %{"value" => source}, socket) do

@@ -92,6 +92,12 @@ defmodule MiniModulesWeb.YieldParserLive do
 
   # on_mount {LiveBeatsWeb.UserAuth, :current_user}
 
+  defp nav_button(assigns) do
+    ~H"""
+    <button type="button" phx-click={@click} class="px-4 py-2 text-left text-sm hover:text-indigo-700 hover:bg-indigo-50"><%= render_slot(@inner_block) %></button>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <.form
@@ -99,10 +105,16 @@ defmodule MiniModulesWeb.YieldParserLive do
       id="editor-form"
       phx-hook="PushEventOnFormData"
       phx-value-event="changed"
+      phx-change="changed"
       class="flex gap-4"
     >
+      <nav class="flex flex-col text-left py-2 bg-indigo-100 min-w-[7rem] w-[20vw] max-w-[12rem]">
+        <.nav_button click="example_ip_address">IP Address</.nav_button>
+        <.nav_button click="example_router">Router</.nav_button>
+        <.nav_button click="example_youtube">YouTube URL</.nav_button>
+      </nav>
       <div class="w-full">
-        <CodeEditorComponent.monaco id="monaco-editor" input={@source} name="source" />
+        <CodeEditorComponent.monaco id="monaco-editor" change_clock={@change_clock} input={@source} name="source" />
         <!--<textarea
           name="source"
           rows={24}
@@ -110,14 +122,10 @@ defmodule MiniModulesWeb.YieldParserLive do
           phx-keyup="source_enter_key"
           phx-key="Enter"
         ><%= @source %></textarea>-->
-        <div class="px-4 py-2 space-x-8">
-          <button type="button" phx-click="example_ip_address">IP Address</button>
-          <button type="button" phx-click="example_router">Router</button>
-          <button type="button" phx-click="example_youtube">YouTube URL</button>
-        </div>
       </div>
 
       <section class="block w-1/2 space-y-4">
+        <input type="hidden" name="change_clock" value={@change_clock}>
         <textarea name="input" rows={6} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>
         <%= if @error_message do %>
           <div role="alert" class="p-4 bg-red-900/20 text-red-800 border border-red-800/25">
@@ -141,7 +149,7 @@ defmodule MiniModulesWeb.YieldParserLive do
     """
   end
 
-  defp process(assigns, source, input, load \\ nil) do
+  defp process(assigns, source, input, mode) do
     decoded =
       try do
         UniversalModules.Parser.decode(source)
@@ -155,7 +163,11 @@ defmodule MiniModulesWeb.YieldParserLive do
       case decoded do
         {:ok, module} ->
           {:ok, module, %{imported_modules: imported_modules}} =
-            resolve_imports(load, module, assigns[:imported_modules])
+            resolve_imports(
+              if(mode == :load, do: :load, else: nil),
+              module,
+              assigns[:imported_modules]
+            )
 
           {{:ok, module}, imported_modules}
 
@@ -165,6 +177,14 @@ defmodule MiniModulesWeb.YieldParserLive do
       end
 
     IO.inspect(decoded)
+
+    change_clock = assigns.change_clock
+    input =
+      case mode do
+        :load -> input
+        {:change, ^change_clock} -> input
+        {:change, _} -> assigns.input
+      end
 
     # decoded = UniversalModules.Parser.decode(input)
     # identifiers = UniversalModules.Inspector.list_identifiers(elem(decoded, 1))
@@ -219,12 +239,23 @@ defmodule MiniModulesWeb.YieldParserLive do
 
   def mount(_parmas, _session, socket) do
     {source, input} = @example_ip_address
-    socket = socket |> assign(process(socket.assigns, source, input, :load))
+
+    socket = socket |> assign(:change_clock, 0)
+
+    socket =
+      socket
+      |> assign(process(socket.assigns, source, input, :load))
+
     {:ok, socket}
   end
 
-  def handle_event("changed", %{"source" => source, "input" => input}, socket) do
-    {:noreply, assign(socket, process(socket.assigns, source, input))}
+  def handle_event(
+        "changed",
+        %{"source" => source, "input" => input, "change_clock" => change_clock_s},
+        socket
+      ) do
+    {change_clock, _} = Integer.parse(change_clock_s)
+    {:noreply, assign(socket, process(socket.assigns, source, input, {:change, change_clock}))}
   end
 
   def handle_event("source_enter_key", %{"value" => source}, socket) do
@@ -247,6 +278,8 @@ defmodule MiniModulesWeb.YieldParserLive do
     do: reset_content(@example_youtube, socket)
 
   defp reset_content({source, input}, socket = %Socket{}) do
-    socket |> assign(process(socket.assigns, source, input, :load))
+    socket
+    |> assign(process(socket.assigns, source, input, :load))
+    |> assign(:change_clock, socket.assigns.change_clock + 1)
   end
 end
