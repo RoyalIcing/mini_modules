@@ -128,7 +128,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       <section class="relative block w-1/2 space-y-4">
         <input type="hidden" name="change_clock" value={@change_clock}>
         <ul class="absolute -ml-4 pt-2 font-mono" role="presentation">
-          <%= for {event, index} <- Enum.with_index(@parsed_events) do %>
+          <%= for index <- Enum.with_index(@parsed_events, fn _, i -> i end) do %>
             <li class="text-gray-600"><%= index + 1 %></li>
           <% end %>
         </ul>
