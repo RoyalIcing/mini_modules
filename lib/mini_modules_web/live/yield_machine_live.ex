@@ -125,8 +125,13 @@ defmodule MiniModulesWeb.YieldMachineLive do
         phx-key="Enter"
       ><%= @source %></textarea>-->
 
-      <section class="block w-1/2 space-y-4">
+      <section class="relative block w-1/2 space-y-4">
         <input type="hidden" name="change_clock" value={@change_clock}>
+        <ul class="absolute -ml-4 pt-2 font-mono" role="presentation">
+          <%= for {event, index} <- Enum.with_index(@parsed_events) do %>
+            <li class="text-gray-600"><%= index + 1 %></li>
+          <% end %>
+        </ul>
         <textarea name="event_lines" rows={10} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @event_lines %></textarea>
         <%= if @mode == :idle do %>
           <button type="button" phx-click="start_timer" class="px-4 py-2 text-white bg-green-800">Start Timer</button>
@@ -168,7 +173,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
 
   defp parse_event_lines(event_lines) do
     event_lines
-    |> String.split([" ", "\n", "\r"], trim: true)
+    |> String.split([" ", "\n", "\r"])
     |> Enum.map(fn s ->
       case Float.parse(s) do
         {n, ""} when n < 1_000_000 ->
@@ -221,6 +226,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       end
 
     events = parse_event_lines(event_lines)
+    IO.inspect(events)
 
     {state, clock, components, error_message} =
       case decoded do
@@ -243,6 +249,7 @@ defmodule MiniModulesWeb.YieldMachineLive do
       state: state,
       clock: clock,
       event_lines: event_lines,
+      parsed_events: events,
       error_message: error_message,
       components: components,
       imported_modules: imported_modules
@@ -275,7 +282,6 @@ defmodule MiniModulesWeb.YieldMachineLive do
         %{"source" => source, "event_lines" => event_lines, "change_clock" => change_clock_s},
         socket
       ) do
-    IO.puts("changed #{change_clock_s}")
     {change_clock, _} = Integer.parse(change_clock_s)
 
     {:noreply,
