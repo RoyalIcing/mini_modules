@@ -32,14 +32,15 @@ defmodule MiniModulesWeb.EditorLive do
       for={:editor}
       id="editor-form"
       class="flex gap-4"
-      phx-change="changed"
+      phx-hook="PushEventOnFormData"
+      phx-value-event="changed"
       phx-submit="load"
     >
       <CodeEditorComponent.monaco id="monaco-editor" input={@input} name="input" />
       <!--<textarea name="input" rows={16} class="w-full font-mono bg-gray-800 text-white border border-gray-600"><%= @input %></textarea>-->
 
-      <section class="block w-1/2 space-y-4">
-        <button type="submit" value="load">Load</button>
+      <section class="block w-1/2 space-y-4 py-4">
+        <button type="submit" value="load" class="px-4 py-2 text-white bg-green-800">Load Imports</button>
 
         <%= if @error_message do %>
         <div role="alert" class="p-4 bg-red-900/20 text-red-800 border border-red-800/25">

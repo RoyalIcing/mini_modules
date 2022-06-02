@@ -97,8 +97,10 @@ defmodule MiniModulesWeb.YieldParserLive do
     <.form
       for={:editor}
       id="editor-form"
+      phx-hook="PushEventOnFormData"
+      phx-value-event="changed"
       class="flex gap-4"
-      phx-change="changed">
+    >
       <div class="w-full">
         <CodeEditorComponent.monaco id="monaco-editor" input={@source} name="source" />
         <!--<textarea
