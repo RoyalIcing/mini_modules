@@ -19,7 +19,7 @@ defmodule MiniModulesWeb.Router do
 
     get "/", LandingController, :index
 
-    get "/react", EditorController, :index
+    get "/react", ReactEditorController, :index
     live "/yieldparser", YieldParserLive, :index
     live "/yieldmachine", YieldMachineLive, :index
     live "/sqlite", SQLiteLive, :index

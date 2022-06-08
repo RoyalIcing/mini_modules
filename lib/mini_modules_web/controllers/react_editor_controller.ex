@@ -1,4 +1,4 @@
-defmodule MiniModulesWeb.EditorController do
+defmodule MiniModulesWeb.ReactEditorController do
   use MiniModulesWeb, :controller
 
   def index(conn, _params) do
@@ -6,6 +6,6 @@ defmodule MiniModulesWeb.EditorController do
   end
 end
 
-defmodule MiniModulesWeb.EditorView do
+defmodule MiniModulesWeb.ReactEditorView do
   use MiniModulesWeb, :view
 end
