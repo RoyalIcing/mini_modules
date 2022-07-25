@@ -12,7 +12,7 @@ fn add(a: i64, b: i64) -> i64 {
     a + b
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyCpu")]
 fn js(source: String) -> String {
     // let mut isolate = CoreIsolate::new(StartupData::None, false);
     // let ret = isolate.execute("<anon>", source);
