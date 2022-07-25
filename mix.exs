@@ -52,7 +52,9 @@ defmodule MiniModules.MixProject do
       {:mint, "~> 1.0"},
       {:heroicons, "~> 0.3.0"},
       {:exqlite, "~> 0.10.3"},
-      {:benchee, "~> 1.0", only: [:dev, :test]}
+      {:benchee, "~> 1.0", only: [:dev, :test]},
+      {:rustler, "~> 0.25.0", only: :dev},
+      {:rustler_precompiled, "~> 0.5.1"}
     ]
   end
 

@@ -28,6 +28,8 @@ defmodule MiniModulesWeb.Router do
     live "/database", DatabaseLandingLive, :index
     live "/database/:database_id", DatabaseLive, :index
     live "/database/:database_id/:table_name", DatabaseLive, :index
+
+    live "/deno", DenoLive, :index
   end
 
   # Other scopes may use custom stacks.
