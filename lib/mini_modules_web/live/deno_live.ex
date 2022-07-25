@@ -47,6 +47,7 @@ defmodule MiniModulesWeb.DenoLive do
   def handle_event("js", %{"source" => source}, socket) do
     start_ms = System.monotonic_time(:millisecond)
 
+    # TODO: handle infinite loops
     result = try do
       Molten.js(source)
     rescue
