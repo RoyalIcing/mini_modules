@@ -6,6 +6,8 @@ defmodule MiniModulesWeb.DenoLive do
     socket =
       socket
       |> assign(:add_result, "")
+      |> assign(:js_result, nil)
+      |> assign(:js_execution_ms, nil)
 
     {:ok, socket}
   end
@@ -13,14 +15,19 @@ defmodule MiniModulesWeb.DenoLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <article class="py-16 px-4 prose lg:prose-xl mx-auto text-center">
-      <h1>Deno</h1>
+    <article class="py-16 px-4 prose lg:prose-xl mx-auto">
+      <h1 class="text-center">Deno</h1>
 
-      <form phx-submit="add">
-        <label>First <input name="first"></label>
-        <label>Second <input name="second"></label>
-        <output><%= @add_result %></output>
-        <button class="px-4 py-2 text-xl text-white bg-blue-600 border border-blue-700 rounded">Add</button>
+      <form phx-change="js">
+        <label class="block">
+          <div>JavaScript Source</div>
+          <textarea name="source" rows="10" class="w-full border" placeholder="Enter your JavaScript masterpiece…"></textarea>
+        </label>
+        <output class="block bg-green-100">
+          <pre class="empty:hidden p-2 text-black"><%= @js_result %></pre>
+          <div class="empty:hidden"><%= if @js_execution_ms, do: "#{@js_execution_ms}ms", else: "" %></div>
+        </output>
+        <button class="mt-2 px-4 py-2 text-xl text-white bg-blue-600 border border-blue-700 rounded">Execute JavaScript</button>
       </form>
     </article>
     """
@@ -34,6 +41,24 @@ defmodule MiniModulesWeb.DenoLive do
     result = Molten.add(first, second)
 
     socket = socket |> assign(:add_result, result)
+    {:noreply, socket}
+  end
+
+  def handle_event("js", %{"source" => source}, socket) do
+    start_ms = System.monotonic_time(:millisecond)
+
+    result = try do
+      Molten.js(source)
+    rescue
+      ErlangError -> :error
+    end
+
+    # task = Task.async(fn -> Molten.js(source) end)
+
+    end_ms = System.monotonic_time(:millisecond)
+    js_execution_ms = end_ms - start_ms
+
+    socket = socket |> assign(:js_result, result) |> assign(:js_execution_ms, js_execution_ms)
     {:noreply, socket}
   end
 end
