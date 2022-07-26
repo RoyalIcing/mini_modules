@@ -30,6 +30,7 @@ defmodule MiniModulesWeb.Router do
     live "/database/:database_id/:table_name", DatabaseLive, :index
 
     live "/deno", DenoLive, :index
+    live "/jsast", JsAstLive, :index
   end
 
   # Other scopes may use custom stacks.

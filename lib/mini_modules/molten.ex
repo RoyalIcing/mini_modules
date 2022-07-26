@@ -3,6 +3,7 @@ defmodule Molten do
 
   def add(_, _), do: error()
   def js(_), do: error()
+  def parse_js(_), do: error()
 
   defp error, do: :erlang.nif_error(:nif_not_loaded)
 end
