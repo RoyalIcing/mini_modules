@@ -1,5 +1,6 @@
 defmodule MiniModulesWeb.DenoLive do
   use MiniModulesWeb, {:live_view, container: {:div, []}}
+  require Logger
 
   @impl true
   def mount(_params, _session, socket) do
@@ -48,11 +49,26 @@ defmodule MiniModulesWeb.DenoLive do
     start_ms = System.monotonic_time(:millisecond)
 
     # TODO: handle infinite loops
-    result = try do
-      Molten.js(source)
-    rescue
-      ErlangError -> :error
-    end
+      # Molten.js(source)
+      task = Task.async(fn () ->
+        try do
+          Molten.js(source)
+        rescue
+          ErlangError -> :error
+        end
+      end)
+      timeout = 1000
+      result = case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
+        {:ok, result} ->
+          result
+
+        {:exit, reason} ->
+          reason
+
+        nil ->
+          Logger.warn("Failed to get a result in #{timeout}ms")
+          nil
+      end
 
     # task = Task.async(fn -> Molten.js(source) end)
 
